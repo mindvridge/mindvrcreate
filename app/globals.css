@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+/*
+ * MindVR design tokens — 에디토리얼 다크, 컬러 90:10 원칙.
+ * 잉크 인디고/무채 90% + 일렉트릭 라임 10% (CTA·핵심 단어·라이브 도트·호버 전용).
+ */
+@theme {
+  --color-ink: oklch(15.5% 0.024 282);
+  --color-ink-soft: oklch(19% 0.026 282);
+  --color-ink-raise: oklch(22.5% 0.028 282);
+  --color-ink-line: oklch(29% 0.024 282);
+
+  --color-paper: oklch(96% 0.006 282);
+  --color-paper-dim: oklch(74% 0.014 282);
+  --color-paper-faint: oklch(56% 0.016 282);
+
+  --color-lime: oklch(89% 0.225 128);
+  --color-lime-deep: oklch(78% 0.21 128);
+
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-family: var(--font-sans);
+  word-break: keep-all;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-lime);
+  color: var(--color-ink);
+}
+
+/* 스크롤 등장 — 모션은 페이드 정도로 절제 */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* 오디오 파형 — 프로덕션 모티프 (추상 블롭 대체) */
+@keyframes wave {
+  0%,
+  100% {
+    transform: scaleY(0.25);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+.wave-bar {
+  animation: wave 1.15s ease-in-out infinite;
+  transform-origin: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wave-bar {
+    animation: none;
+    transform: scaleY(0.45);
+  }
+}
+
+/* 라이브 도트 */
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+.live-dot {
+  animation: blink 1.6s ease-in-out infinite;
+}
+
+/* FAQ 아코디언 화살표 */
+details[open] .faq-chevron {
+  transform: rotate(45deg);
+}
