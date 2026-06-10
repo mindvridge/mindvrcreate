@@ -26,13 +26,13 @@ export default function Hero() {
           <div className="mt-9 flex flex-wrap items-center gap-4">
             <a
               href="#demo-request"
-              className="rounded-md bg-lime px-6 py-3.5 text-base font-bold text-ink transition-colors hover:bg-lime-deep"
+              className="bg-lime px-6 py-3.5 text-base font-bold text-ink transition-colors hover:bg-lime-deep"
             >
               무료 아바타 데모 받기
             </a>
             <a
               href="#process"
-              className="rounded-md border border-ink-line px-6 py-3.5 text-base font-semibold text-paper-dim transition-colors hover:border-lime hover:text-lime"
+              className="border border-ink-line px-6 py-3.5 text-base font-semibold text-paper-dim transition-colors hover:border-lime hover:text-lime"
             >
               제작 과정 보기
             </a>

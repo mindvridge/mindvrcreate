@@ -37,7 +37,7 @@ export default function HeroStage({ videoSrc }: { videoSrc?: string }) {
 
   return (
     // 모바일은 세로(4:5), 데스크톱은 16:9 — 9:16 세로 데모 영상 확보 시 모바일 비율을 9/16로 조정
-    <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg border border-ink-line bg-ink-soft sm:aspect-video">
+    <div className="relative aspect-[4/5] w-full overflow-hidden border border-ink-line bg-ink-soft sm:aspect-video">
       {videoSrc ? (
         <video
           ref={videoRef}
@@ -71,7 +71,7 @@ export default function HeroStage({ videoSrc }: { videoSrc?: string }) {
       {videoSrc && (
         <button
           onClick={toggleSound}
-          className="absolute bottom-3 right-3 rounded-md border border-ink-line bg-ink/70 px-3 py-1.5 font-mono text-[11px] tracking-wider text-paper-dim transition-colors hover:border-lime hover:text-lime"
+          className="absolute bottom-3 right-3 border border-ink-line bg-ink/70 px-3 py-1.5 font-mono text-[11px] tracking-wider text-paper-dim transition-colors hover:border-lime hover:text-lime"
         >
           {muted ? "SOUND ON · 소리 켜기" : "SOUND OFF · 소리 끄기"}
         </button>

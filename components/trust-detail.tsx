@@ -1,4 +1,5 @@
 import Reveal from "./reveal";
+import SectionHeader from "./section-header";
 
 const stamps = [
   {
@@ -37,28 +38,24 @@ const engines = [
 export default function TrustDetail() {
   return (
     <section className="mx-auto max-w-6xl px-5 py-24 sm:py-32">
-      <Reveal>
-        <p className="font-mono text-xs tracking-[0.25em] text-paper-faint">EVIDENCE</p>
-        <h2 className="mt-4 max-w-3xl text-3xl font-extrabold leading-snug tracking-tight sm:text-4xl">
-          과장 대신, 번호로 말합니다.
-        </h2>
-      </Reveal>
+      <SectionHeader index="07" label="EVIDENCE" title="과장 대신, 번호로 말합니다." />
 
-      <div className="mt-14 grid gap-6 sm:grid-cols-2">
-        {stamps.map((s, i) => (
-          <Reveal key={s.label} delay={(i % 2) * 100}>
-            <div className="h-full rounded-lg border border-ink-line bg-ink-soft p-7">
+      {/* 등기부 톤의 헤어라인 그리드 */}
+      <Reveal delay={80}>
+        <div className="mt-14 grid border border-ink-line bg-ink-line gap-px sm:grid-cols-2">
+          {stamps.map((s) => (
+            <div key={s.label} className="bg-ink-soft p-7 sm:p-9">
               <p className="font-mono text-[11px] tracking-[0.25em] text-paper-faint">{s.label}</p>
-              <h3 className="mt-3 text-lg font-bold">{s.title}</h3>
+              <h3 className="mt-4 text-lg font-bold">{s.title}</h3>
               <p className="mt-1.5 font-mono text-sm text-lime">{s.detail}</p>
               <p className="mt-3 text-sm leading-relaxed text-paper-dim">{s.body}</p>
             </div>
-          </Reveal>
-        ))}
-      </div>
+          ))}
+        </div>
+      </Reveal>
 
       <Reveal delay={120}>
-        <div className="mt-10 overflow-x-auto rounded-lg border border-ink-line">
+        <div className="mt-10 overflow-x-auto border border-ink-line">
           <table className="w-full min-w-[640px] text-left text-sm">
             <caption className="sr-only">엔진 스택 및 라이선스</caption>
             <thead>

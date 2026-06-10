@@ -1,4 +1,5 @@
 import Reveal from "./reveal";
+import SectionHeader from "./section-header";
 
 const plans = [
   {
@@ -34,44 +35,39 @@ export default function Pricing() {
   return (
     <section id="pricing" className="border-t border-ink-line bg-ink-soft/40">
       <div className="mx-auto max-w-6xl px-5 py-24 sm:py-32">
-        <Reveal>
-          <p className="font-mono text-xs tracking-[0.25em] text-paper-faint">PRICING</p>
-          <h2 className="mt-4 max-w-3xl text-3xl font-extrabold leading-snug tracking-tight sm:text-4xl">
-            USD 구독 없이, 쓴 만큼만.
-          </h2>
-          <p className="mt-5 max-w-2xl leading-relaxed text-paper-dim">
-            자체 GPU로 렌더링하기 때문에 가능한 구조입니다. 무료 데모로 품질을 확인한 뒤,
-            물량·프로젝트 단위로만 비용이 발생합니다.
-          </p>
-        </Reveal>
+        <SectionHeader
+          index="06"
+          label="PRICING"
+          title="USD 구독 없이, 쓴 만큼만."
+          lede="자체 GPU로 렌더링하기 때문에 가능한 구조입니다. 무료 데모로 품질을 확인한 뒤, 물량·프로젝트 단위로만 비용이 발생합니다."
+        />
 
-        <div className="mt-14 grid gap-6 lg:grid-cols-3">
-          {plans.map((p, i) => (
-            <Reveal key={p.name} delay={i * 80}>
-              <div
-                className={`flex h-full flex-col rounded-lg border p-8 ${
-                  p.highlight ? "border-lime/60 bg-ink" : "border-ink-line bg-ink"
-                }`}
-              >
-                <h3 className="text-lg font-bold">{p.name}</h3>
-                <p className="mt-3 text-3xl font-extrabold tracking-tight">
+        {/* 헤어라인 분할 요금표 — 박스 카드 대신 한 장의 표처럼 */}
+        <Reveal delay={80}>
+          <div className="mt-14 grid border border-ink-line bg-ink-line gap-px lg:grid-cols-3">
+            {plans.map((p) => (
+              <div key={p.name} className="relative flex h-full flex-col bg-ink p-8 sm:p-10">
+                {p.highlight && <span className="absolute inset-x-0 top-0 h-0.5 bg-lime" />}
+                <p className="font-mono text-[11px] tracking-[0.2em] text-paper-faint">
+                  {p.name}
+                </p>
+                <p className="mt-4 text-3xl font-extrabold tracking-tight">
                   {p.price}
                   {p.unit && (
                     <span className="ml-1 text-base font-medium text-paper-faint">{p.unit}</span>
                   )}
                 </p>
                 <p className="mt-4 text-sm leading-relaxed text-paper-dim">{p.desc}</p>
-                <ul className="mt-6 flex-1 space-y-2.5">
+                <ul className="mt-7 flex-1 space-y-0 divide-y divide-ink-line/60 border-y border-ink-line/60">
                   {p.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2.5 text-sm text-paper-dim">
-                      <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-lime" />
+                    <li key={f} className="py-2.5 text-sm text-paper-dim">
                       {f}
                     </li>
                   ))}
                 </ul>
                 <a
                   href="#demo-request"
-                  className={`mt-8 rounded-md px-5 py-3 text-center text-sm font-bold transition-colors ${
+                  className={`mt-8 px-5 py-3 text-center text-sm font-bold transition-colors ${
                     p.highlight
                       ? "bg-lime text-ink hover:bg-lime-deep"
                       : "border border-ink-line text-paper-dim hover:border-lime hover:text-lime"
@@ -80,9 +76,9 @@ export default function Pricing() {
                   {p.cta}
                 </a>
               </div>
-            </Reveal>
-          ))}
-        </div>
+            ))}
+          </div>
+        </Reveal>
       </div>
     </section>
   );

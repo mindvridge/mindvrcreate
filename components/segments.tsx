@@ -1,4 +1,5 @@
 import Reveal from "./reveal";
+import SectionHeader from "./section-header";
 
 // 모두의창업 1차 통과 창업자 4-Tier 조사 결과를 거울처럼 반영한 유스케이스.
 const segments = [
@@ -35,48 +36,45 @@ const segments = [
 export default function Segments() {
   return (
     <section id="usecases" className="mx-auto max-w-6xl px-5 py-24 sm:py-32">
-      <Reveal>
-        <p className="font-mono text-xs tracking-[0.25em] text-paper-faint">USE CASES</p>
-        <h2 className="mt-4 max-w-3xl text-3xl font-extrabold leading-snug tracking-tight sm:text-4xl">
-          만들고 있는 제품에 따라,
-          <br />
-          필요한 레이어만 가져가세요.
-        </h2>
-        <p className="mt-5 max-w-2xl leading-relaxed text-paper-dim">
-          창업자 수천 명의 아이디어를 직접 분석해 설계한 네 가지 적용 트랙입니다.
-          당신의 제품이 어디에 해당하는지 보이면, 데모도 그 모습으로 만들어 드립니다.
-        </p>
-      </Reveal>
+      <SectionHeader
+        index="03"
+        label="USE CASES"
+        title={
+          <>
+            만들고 있는 제품에 따라,
+            <br />
+            필요한 레이어만 가져가세요.
+          </>
+        }
+        lede="창업자 수천 명의 아이디어를 직접 분석해 설계한 네 가지 적용 트랙입니다. 당신의 제품이 어디에 해당하는지 보이면, 데모도 그 모습으로 만들어 드립니다."
+      />
 
-      <div className="mt-14 grid gap-6 lg:grid-cols-2">
+      {/* 인덱스 리스트 — 트랙을 목차처럼 읽게 한다 */}
+      <div className="mt-14 border-y border-ink-line">
         {segments.map((s, i) => (
-          <Reveal key={s.code} delay={(i % 2) * 100}>
-            <div
-              className={`h-full rounded-lg border p-8 ${
-                s.main
-                  ? "border-lime/50 bg-ink-soft"
-                  : "border-ink-line bg-ink-soft/60"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <p className="font-mono text-xs tracking-[0.2em] text-paper-faint">
-                  TRACK {s.code}
-                </p>
-                {s.main && (
-                  <span className="rounded-sm border border-lime/40 px-2 py-0.5 font-mono text-[10px] tracking-widest text-lime">
-                    MAIN
-                  </span>
-                )}
-              </div>
-              <h3 className="mt-3 text-xl font-bold">{s.title}</h3>
-              <p className="mt-3 leading-relaxed text-paper-dim">{s.desc}</p>
-              <p className="mt-5 border-t border-ink-line pt-4 font-mono text-xs tracking-wider text-paper-faint">
-                제공 — {s.offer}
+          <Reveal key={s.code} delay={i * 60}>
+            <div className="group grid gap-3 border-b border-ink-line py-9 last:border-b-0 md:grid-cols-[110px_280px_1fr_auto] md:items-baseline md:gap-8">
+              <p className="font-mono text-sm tracking-[0.2em] text-paper-faint">
+                {s.code}
+                {s.main && <span className="ml-2 text-lime">●</span>}
+              </p>
+              <h3 className="text-xl font-bold transition-colors group-hover:text-lime">
+                {s.title}
+              </h3>
+              <p className="leading-relaxed text-paper-dim">{s.desc}</p>
+              <p className="font-mono text-xs leading-relaxed tracking-wider text-paper-faint md:max-w-[180px] md:text-right">
+                {s.offer}
               </p>
             </div>
           </Reveal>
         ))}
       </div>
+
+      <Reveal delay={120}>
+        <p className="mt-6 font-mono text-[11px] tracking-[0.2em] text-paper-faint">
+          <span className="text-lime">●</span> MAIN TRACK
+        </p>
+      </Reveal>
     </section>
   );
 }

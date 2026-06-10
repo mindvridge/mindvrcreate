@@ -26,7 +26,7 @@ export default function Header() {
 
         <a
           href="#demo-request"
-          className="rounded-md bg-lime px-4 py-2 text-sm font-bold text-ink transition-colors hover:bg-lime-deep"
+          className="bg-lime px-4 py-2 text-sm font-bold text-ink transition-colors hover:bg-lime-deep"
         >
           무료 데모 신청
         </a>

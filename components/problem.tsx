@@ -1,4 +1,5 @@
 import Reveal from "./reveal";
+import SectionHeader from "./section-header";
 
 const problems = [
   {
@@ -21,21 +22,24 @@ const problems = [
 export default function Problem() {
   return (
     <section className="mx-auto max-w-6xl px-5 py-24 sm:py-32">
-      <Reveal>
-        <p className="font-mono text-xs tracking-[0.25em] text-paper-faint">PROBLEM</p>
-        <h2 className="mt-4 max-w-3xl text-3xl font-extrabold leading-snug tracking-tight sm:text-4xl">
-          지금 디지털휴먼을 도입하려면,
-          <br />셋 중 하나는 포기해야 합니다.
-        </h2>
-      </Reveal>
+      <SectionHeader
+        index="01"
+        label="PROBLEM"
+        title={
+          <>
+            지금 디지털휴먼을 도입하려면,
+            <br />셋 중 하나는 포기해야 합니다.
+          </>
+        }
+      />
 
-      <div className="mt-14 grid gap-6 md:grid-cols-3">
+      <div className="mt-14 border-y border-ink-line">
         {problems.map((p, i) => (
-          <Reveal key={p.index} delay={i * 100}>
-            <div className="h-full rounded-lg border border-ink-line bg-ink-soft p-7">
-              <p className="font-mono text-xs text-paper-faint">{p.index}</p>
-              <h3 className="mt-3 text-xl font-bold">{p.title}</h3>
-              <p className="mt-3 leading-relaxed text-paper-dim">{p.body}</p>
+          <Reveal key={p.index} delay={i * 80}>
+            <div className="grid items-baseline gap-3 border-b border-ink-line py-9 last:border-b-0 md:grid-cols-[100px_220px_1fr] md:gap-8">
+              <span className="font-mono text-2xl text-paper-faint/50">{p.index}</span>
+              <h3 className="text-xl font-bold">{p.title}</h3>
+              <p className="leading-relaxed text-paper-dim">{p.body}</p>
             </div>
           </Reveal>
         ))}
