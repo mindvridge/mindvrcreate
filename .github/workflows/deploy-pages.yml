@@ -2,7 +2,11 @@ name: Deploy to GitHub Pages
 
 # GITHUB_TOKEN으로는 Pages 사이트 생성 API를 호출할 수 없어,
 # gh-pages 브랜치에 정적 빌드를 푸시하는 방식을 사용한다.
-# (gh-pages 브랜치가 생기면 GitHub가 Pages를 자동 활성화)
+# (Pages 활성화 후 mindvridge.github.io/mindvrcreate 로 서빙)
+#
+# preview/ 는 Pages 활성화 전에도 외부에서 테스트할 수 있도록
+# raw.githack.com 경로(/mindvridge/mindvrcreate/gh-pages/preview)에
+# 맞춘 base path로 빌드한 사본이다.
 on:
   push:
     branches: [claude/homepage-creation-qmxyxf]
@@ -25,10 +29,15 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build
+      - name: Build for GitHub Pages
+        run: npm run build && mv out site
         env:
           NEXT_PUBLIC_BASE_PATH: /mindvrcreate
+      - name: Build preview for raw.githack.com
+        run: npm run build && mkdir -p site/preview && cp -r out/. site/preview/
+        env:
+          NEXT_PUBLIC_BASE_PATH: /mindvridge/mindvrcreate/gh-pages/preview
       - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./out
+          publish_dir: ./site
