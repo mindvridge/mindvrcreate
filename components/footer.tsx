@@ -21,7 +21,7 @@ export default function Footer() {
         </div>
       </div>
       <div className="border-t border-ink-line/60 py-5 text-center text-xs text-paper-faint">
-        © {new Date().getFullYear()} MindVR. All rights reserved.
+        © {new Date().getFullYear()} 마인드브이알 MindVR. All rights reserved.
       </div>
     </footer>
   );
