@@ -1,21 +1,26 @@
 @import "tailwindcss";
 
 /*
- * MindVR design tokens — 에디토리얼 다크, 컬러 90:10 원칙.
- * 잉크 인디고/무채 90% + 일렉트릭 라임 10% (CTA·핵심 단어·라이브 도트·호버 전용).
+ * MindVR design tokens — 에디토리얼 라이트, 컬러 90:10 원칙.
+ * 한국 기업 신뢰 톤: 웜 화이트/무채 90% + 딥 그린 10% (CTA·핵심 단어·라이브 도트 전용).
+ *
+ * 주의: 다크 테마에서 라이트로 전환하며 토큰의 "역할"이 다음과 같이 재정의됨.
+ *   ink*  = 배경·표면 계열 (밝음)
+ *   paper* = 텍스트 계열 (어두움)
+ *   lime  = 액센트 그린 (텍스트 가독 + 버튼 배경 겸용, 버튼 글자는 text-ink=흰색)
  */
 @theme {
-  --color-ink: oklch(15.5% 0.024 282);
-  --color-ink-soft: oklch(19% 0.026 282);
-  --color-ink-raise: oklch(22.5% 0.028 282);
-  --color-ink-line: oklch(29% 0.024 282);
+  --color-ink: oklch(99% 0.002 106);
+  --color-ink-soft: oklch(96.8% 0.005 106);
+  --color-ink-raise: oklch(94.5% 0.006 106);
+  --color-ink-line: oklch(89.5% 0.006 106);
 
-  --color-paper: oklch(96% 0.006 282);
-  --color-paper-dim: oklch(74% 0.014 282);
-  --color-paper-faint: oklch(56% 0.016 282);
+  --color-paper: oklch(25% 0.02 282);
+  --color-paper-dim: oklch(44% 0.016 282);
+  --color-paper-faint: oklch(58% 0.012 282);
 
-  --color-lime: oklch(89% 0.225 128);
-  --color-lime-deep: oklch(78% 0.21 128);
+  --color-lime: oklch(56% 0.155 150);
+  --color-lime-deep: oklch(48% 0.145 150);
 
   --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
     "Segoe UI", system-ui, sans-serif;
