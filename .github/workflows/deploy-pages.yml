@@ -33,10 +33,18 @@ jobs:
         run: npm run build && mv out site
         env:
           NEXT_PUBLIC_BASE_PATH: /mindvrcreate
-      - name: Build preview for raw.githack.com
-        run: npm run build && mkdir -p site/preview && cp -r out/. site/preview/
+      - name: Build relocatable preview (works on any CDN path)
+        # 어떤 호스트·경로에서도 열리도록 자산 경로를 상대경로로 재작성한다.
+        # raw.githack.com / cdn.statically.io 둘 다 이 빌드 하나로 서빙.
+        run: |
+          npm run build
+          find out -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.txt' \) \
+            -exec sed -i 's|"/__PREVIEW__/|"./|g; s|/__PREVIEW__/|./|g; s|"/__PREVIEW__"|"."|g' {} +
+          mkdir -p site/preview
+          cp -r out/. site/preview/
+          cp -r out/. site/p 2>/dev/null || { mkdir -p site/p && cp -r out/. site/p/; }
         env:
-          NEXT_PUBLIC_BASE_PATH: /mindvridge/mindvrcreate/gh-pages/preview
+          NEXT_PUBLIC_BASE_PATH: /__PREVIEW__
       - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
