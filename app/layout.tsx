@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "마인드브이알 MindVR — 한국어 특화 AI 아바타 스튜디오",
   description:
-    "한국어로 자연스럽게 말하는, 당신만의 AI 휴먼을 합리적 비용에. 자체 NVIDIA B200과 검증된 오픈소스 SOTA 엔진으로 만드는 맞춤형 디지털휴먼 스튜디오. 캐릭터 IP는 100% 고객 소유.",
+    "한국어로 자연스럽게 말하는, 당신만의 AI 휴먼을 합리적 비용에. 캐릭터·브랜드·페르소나 전용 디지털휴먼을 맞춤 제작하는 스튜디오. 캐릭터 IP는 100% 고객 소유.",
   openGraph: {
     title: "마인드브이알 MindVR — 한국어 특화 AI 아바타 스튜디오",
     description:

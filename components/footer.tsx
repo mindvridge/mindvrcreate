@@ -18,7 +18,6 @@ export default function Footer() {
         <div className="font-mono text-[11px] leading-relaxed tracking-wider text-paper-faint">
           <p>GOV R&D RS-2026-25508342</p>
           <p>PATENT 10-2026-0007692 · 10-2026-0007697</p>
-          <p>INFRA NVIDIA B200 192GB</p>
         </div>
       </div>
       <div className="border-t border-ink-line/60 py-5 text-center text-xs text-paper-faint">

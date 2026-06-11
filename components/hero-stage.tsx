@@ -125,7 +125,7 @@ function Placeholder() {
       <Waveform bars={36} className="text-lime/80" />
 
       <p className="px-6 text-center font-mono text-[11px] tracking-widest text-paper-faint">
-        HERO DEMO — IN PRODUCTION · LONGCAT-VIDEO-AVATAR 1.5 + COSYVOICE 2 (KO)
+        HERO DEMO — COMING SOON · KOREAN AI HUMAN
       </p>
     </div>
   );

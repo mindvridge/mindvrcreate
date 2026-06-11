@@ -10,7 +10,7 @@ const problems = [
   {
     index: "02",
     title: "영어 같거나",
-    body: "영어 중심으로 학습된 엔진은 한국어 입모양과 운율이 어색합니다. 시청자는 3초 만에 알아챕니다.",
+    body: "영어 중심으로 만들어진 서비스는 한국어 입모양과 운율이 어색합니다. 시청자는 3초 만에 알아챕니다.",
   },
   {
     index: "03",
@@ -47,8 +47,8 @@ export default function Problem() {
 
       <Reveal delay={150}>
         <p className="mt-12 max-w-3xl text-lg leading-relaxed text-paper-dim">
-          마인드브이알은 셋 다 포기하지 않습니다. 자체 GPU 인프라와 한국어가 검증된
-          엔진, 그리고 <span className="font-semibold text-lime">맞춤 제작 + IP 전부 양도</span>로
+          마인드브이알은 셋 다 포기하지 않습니다. 한국어에 최적화된 자체 제작 역량과{" "}
+          <span className="font-semibold text-lime">맞춤 제작 + IP 전부 양도</span>로
           답합니다.
         </p>
       </Reveal>

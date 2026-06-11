@@ -1,6 +1,6 @@
 import HeroStage from "./hero-stage";
 
-// 0순위 A/B 데모(LongCat 1.5 vs MagiHuman) 확정 후
+// 히어로 데모 영상 확정 후
 // /public/hero-demo.mp4 를 추가하고 아래 경로를 지정하면 영상 모드로 전환된다.
 const HERO_VIDEO_SRC: string | undefined = undefined;
 
@@ -18,9 +18,9 @@ export default function Hero() {
             당신만의 AI 휴먼.
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-paper-dim">
-            템플릿 아바타가 아닙니다. 자체 NVIDIA B200과 상용 서비스를 이긴 오픈소스
-            SOTA 엔진으로, 당신의 캐릭터·브랜드·페르소나 전용 디지털휴먼을
-            합리적 비용에 제작합니다. 캐릭터 IP는 100% 고객 소유.
+            템플릿 아바타가 아닙니다. 당신의 캐릭터·브랜드·페르소나 전용
+            디지털휴먼을 처음부터 끝까지 맞춤 제작합니다. 한국어 입모양과
+            억양까지 자연스럽게, 캐릭터 IP는 100% 고객 소유.
           </p>
 
           <div className="mt-9 flex flex-wrap items-center gap-4">
