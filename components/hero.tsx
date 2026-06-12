@@ -1,8 +1,7 @@
 import HeroStage from "./hero-stage";
 
-// 히어로 데모 영상 확정 후
-// /public/hero-demo.mp4 를 추가하고 아래 경로를 지정하면 영상 모드로 전환된다.
-const HERO_VIDEO_SRC: string | undefined = undefined;
+// 마브 API(daVinci-MagiHuman)로 제작한 한국어 토킹헤드 데모.
+const HERO_VIDEO_SRC: string | undefined = "/hero-demo.mp4";
 
 export default function Hero() {
   return (

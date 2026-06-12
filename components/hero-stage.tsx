@@ -48,6 +48,7 @@ export default function HeroStage({ videoSrc }: { videoSrc?: string }) {
         <video
           ref={videoRef}
           src={videoSrc}
+          poster={`${BASE}/images/hero.jpg`}
           autoPlay
           loop
           muted
