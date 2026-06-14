@@ -1,12 +1,11 @@
 import Link from "next/link";
+import AccountMenu from "./account-menu";
 
 const nav = [
   { href: "/#value", label: "왜 마인드브이알" },
   { href: "/#usecases", label: "유스케이스" },
   { href: "/#demos", label: "데모" },
-  { href: "/#process", label: "작동 방식" },
   { href: "/#pricing", label: "가격" },
-  { href: "/#faq", label: "FAQ" },
   { href: "/test", label: "테스트 랩" },
 ];
 
@@ -27,12 +26,7 @@ export default function Header() {
           ))}
         </nav>
 
-        <Link
-          href="/#demo-request"
-          className="bg-lime px-4 py-2 text-sm font-bold text-ink transition-colors hover:bg-lime-deep"
-        >
-          무료 데모 신청
-        </Link>
+        <AccountMenu />
       </div>
     </header>
   );
