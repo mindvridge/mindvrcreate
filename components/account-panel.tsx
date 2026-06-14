@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   CREDIT_COSTS,
   CREDIT_PACKS,
@@ -25,6 +25,7 @@ const TYPE_LABEL: Record<string, string> = {
   spend: "사용",
   grant: "충전",
   refund: "환불",
+  coupon: "쿠폰",
 };
 
 function fmtTime(iso: string): string {
@@ -45,18 +46,50 @@ export default function AccountPanel({
   name: string;
   email: string;
 }) {
+  const [credits, setCredits] = useState(initialCredits);
   const [logs, setLogs] = useState<Log[]>([]);
   const [usage, setUsage] = useState<Usage[]>([]);
 
+  // 쿠폰
+  const [coupon, setCoupon] = useState("");
+  const [couponBusy, setCouponBusy] = useState(false);
+  const [couponMsg, setCouponMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const loadUsage = useCallback(
+    () =>
+      fetch("/api/account/usage", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.logs) setLogs(d.logs);
+          if (d.usage) setUsage(d.usage);
+        })
+        .catch(() => {}),
+    []
+  );
   useEffect(() => {
-    fetch("/api/account/usage", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.logs) setLogs(d.logs);
-        if (d.usage) setUsage(d.usage);
-      })
-      .catch(() => {});
-  }, []);
+    loadUsage();
+  }, [loadUsage]);
+
+  const redeem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCouponBusy(true);
+    setCouponMsg(null);
+    const res = await fetch("/api/coupons/redeem", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ code: coupon }),
+    });
+    const json = await res.json();
+    setCouponBusy(false);
+    if (!res.ok) {
+      setCouponMsg({ ok: false, text: json.error ?? "쿠폰을 사용할 수 없습니다." });
+      return;
+    }
+    setCredits(json.balance);
+    setCoupon("");
+    setCouponMsg({ ok: true, text: `${json.credits.toLocaleString()} 크레딧이 충전되었습니다!` });
+    await loadUsage();
+  };
 
   return (
     <div className="space-y-14">
@@ -70,7 +103,7 @@ export default function AccountPanel({
                 <span className="text-lime">무제한</span>
               ) : (
                 <>
-                  {initialCredits.toLocaleString()}
+                  {credits.toLocaleString()}
                   <span className="ml-2 text-lg font-medium text-paper-faint">크레딧</span>
                 </>
               )}
@@ -83,6 +116,31 @@ export default function AccountPanel({
             테스트 랩에서 사용하기
           </a>
         </div>
+      </section>
+
+      {/* 쿠폰 등록 */}
+      <section>
+        <h2 className="mb-4 font-mono text-xs tracking-[0.2em] text-paper-faint">COUPON · 쿠폰 등록</h2>
+        <form onSubmit={redeem} className="flex flex-wrap items-center gap-3 border border-ink-line bg-ink p-5">
+          <input
+            value={coupon}
+            onChange={(e) => setCoupon(e.target.value)}
+            placeholder="쿠폰 코드 입력 (예: WELCOME50)"
+            className="min-w-[220px] flex-1 border border-ink-line bg-ink px-4 py-3 text-sm uppercase tracking-wider text-paper placeholder:text-paper-faint placeholder:normal-case focus:border-lime focus:outline-none"
+          />
+          <button
+            type="submit"
+            disabled={couponBusy || !coupon.trim()}
+            className="bg-lime px-6 py-3 text-sm font-bold text-ink transition-colors hover:bg-lime-deep disabled:opacity-50"
+          >
+            {couponBusy ? "확인 중…" : "등록"}
+          </button>
+          {couponMsg && (
+            <p className={`w-full text-sm font-semibold ${couponMsg.ok ? "text-lime" : "text-red-600"}`}>
+              {couponMsg.text}
+            </p>
+          )}
+        </form>
       </section>
 
       {/* 서비스별 단가 */}
@@ -125,8 +183,8 @@ export default function AccountPanel({
           })}
         </div>
         <p className="mt-3 text-xs text-paper-faint">
-          * 기준 단가 1크레딧 ≈ ₩{WON_PER_CREDIT}. 현재는 결제 연동 전이라 충전은 관리자에게 문의해
-          주세요.
+          * 기준 단가 1크레딧 ≈ ₩{WON_PER_CREDIT}. 현재는 결제 연동 전이라 충전은 쿠폰 또는 관리자에게
+          문의해 주세요.
         </p>
       </section>
 

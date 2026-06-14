@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { SERVICE_LABELS, type Service } from "@/lib/credits";
+import AdminCoupons from "./admin-coupons";
 
 type AdminUser = {
   id: string;
@@ -35,6 +36,7 @@ const TYPE_LABEL: Record<string, string> = {
   spend: "사용",
   grant: "충전",
   refund: "환불",
+  coupon: "쿠폰",
 };
 
 function serviceLabel(s: string | null): string {
@@ -200,6 +202,9 @@ export default function AdminDashboard() {
           </table>
         </div>
       </section>
+
+      {/* 쿠폰 관리 */}
+      <AdminCoupons />
 
       {/* 사용 로그 */}
       <section>

@@ -58,6 +58,29 @@ function init(): Database.Database {
     CREATE INDEX IF NOT EXISTS idx_logs_pending ON credit_logs(settled, type) WHERE job_id IS NOT NULL;
     CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at);
+
+    CREATE TABLE IF NOT EXISTS coupons (
+      code            TEXT PRIMARY KEY,        -- 정규화: 대문자
+      credits         INTEGER NOT NULL,        -- 지급 크레딧
+      max_redemptions INTEGER,                 -- NULL = 전체 무제한
+      redeemed_count  INTEGER NOT NULL DEFAULT 0,
+      expires_at      TEXT,                    -- NULL = 무기한
+      active          INTEGER NOT NULL DEFAULT 1,
+      note            TEXT,
+      created_by      TEXT,
+      created_at      TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS coupon_redemptions (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      code       TEXT NOT NULL,
+      user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      credits    INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_redemption_once ON coupon_redemptions(code, user_id);
+    CREATE INDEX IF NOT EXISTS idx_redemption_uid ON coupon_redemptions(user_id);
   `);
 
   // 기존 DB 파일(settled 컬럼 없음) 대비 방어적 마이그레이션
