@@ -17,7 +17,8 @@ npm run build && npm run start
 |---|---|---|
 | `MARV_API_BASE` | `https://maket.mindvr.co.kr` | 마브 생성 API 베이스 URL |
 | `MARV_API_KEY` | (없음) | 마브 API 인증키. 마브에 인증이 켜지면 설정. 코드에 두지 않음 |
-| `ADMIN_EMAIL` | `mindvridge.official@gmail.com` | 이 이메일로 가입하면 관리자 + 무제한 권한 부여 |
+| `ADMIN_EMAIL` | `mindvridge.official@gmail.com` | 관리자 계정 이메일 |
+| `ADMIN_SETUP_CODE` | (없음) | 관리자 부트스트랩 코드. `ADMIN_EMAIL`이 **최초 가입자**면 자동 관리자가 되고, 이후에 가입할 때는 이 코드를 함께 제출해야 관리자 권한을 받습니다(이메일 선점 탈취 방지) |
 | `DB_PATH` | `./data/app.db` | SQLite 파일 경로 |
 
 `.env.local` 에 설정합니다 (이 파일은 git 에 커밋되지 않습니다).

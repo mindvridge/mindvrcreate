@@ -1,13 +1,11 @@
-import { MARV_BASE, marvHeaders } from "@/lib/marv";
+import { marvFetch } from "@/lib/marv";
 
 export async function GET() {
-  const res = await fetch(`${MARV_BASE}/v1/health`, {
-    headers: marvHeaders(),
-    cache: "no-store",
-  });
-  const body = await res.text();
-  return new Response(body, {
-    status: res.status,
-    headers: { "content-type": "application/json" },
-  });
+  try {
+    const res = await marvFetch("/v1/health", { cache: "no-store" }, 10_000);
+    const body = await res.text();
+    return new Response(body, { status: res.status, headers: { "content-type": "application/json" } });
+  } catch {
+    return Response.json({ status: "unreachable", queue_depth: null }, { status: 200 });
+  }
 }

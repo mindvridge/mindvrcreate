@@ -7,8 +7,6 @@ import { dirname } from "node:path";
  * - 로컬: ./data/app.db (기본)
  * - Railway: 볼륨을 /data 에 마운트하고 DB_PATH=/data/app.db 설정
  *   (볼륨 없이는 재배포 시 데이터가 초기화되므로 반드시 볼륨 필요)
- *
- * 핫 리로드/서버리스 재사용을 위해 전역에 단일 인스턴스를 캐싱한다.
  */
 const DB_PATH = process.env.DB_PATH || "./data/app.db";
 
@@ -20,6 +18,7 @@ function init(): Database.Database {
   const db = new Database(DB_PATH);
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
+  db.pragma("busy_timeout = 5000");
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -49,14 +48,24 @@ function init(): Database.Database {
       unlimited     INTEGER NOT NULL DEFAULT 0,
       balance_after INTEGER NOT NULL,
       job_id        TEXT,
+      settled       INTEGER NOT NULL DEFAULT 1,  -- 0=비동기 잡 정산 대기, 1=정산 완료
       note          TEXT,
       created_at    TEXT NOT NULL
     );
 
     CREATE INDEX IF NOT EXISTS idx_logs_user ON credit_logs(user_id, id DESC);
     CREATE INDEX IF NOT EXISTS idx_logs_job  ON credit_logs(job_id);
+    CREATE INDEX IF NOT EXISTS idx_logs_pending ON credit_logs(settled, type) WHERE job_id IS NOT NULL;
     CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at);
   `);
+
+  // 기존 DB 파일(settled 컬럼 없음) 대비 방어적 마이그레이션
+  try {
+    db.exec("ALTER TABLE credit_logs ADD COLUMN settled INTEGER NOT NULL DEFAULT 1");
+  } catch {
+    /* 이미 존재 */
+  }
 
   return db;
 }

@@ -1,65 +1,89 @@
 import { getCurrentUser } from "@/lib/auth";
-import { CREDIT_COSTS, serviceForPath } from "@/lib/credits";
-import { chargeCredits } from "@/lib/ledger";
-import { ALLOWED_SUBMIT_PATHS, MARV_BASE, marvHeaders } from "@/lib/marv";
+import { serviceForPath } from "@/lib/credits";
+import { reserveCredits, settleReservation, voidReservation } from "@/lib/ledger";
+import {
+  ALLOWED_SUBMIT_PATHS,
+  MAX_TOTAL_UPLOAD_BYTES,
+  MAX_UPLOAD_BYTES,
+  marvFetch,
+} from "@/lib/marv";
 
-// 마브 생성 endpoint 프록시 — 로그인·크레딧 차감 후 위임.
+// 마브 생성 endpoint 프록시 — 로그인 → 선차감(예약) → 마브 호출 → 성공 정산 / 실패 환불.
 export async function POST(request: Request) {
   const user = await getCurrentUser();
-  if (!user) {
-    return Response.json({ detail: "로그인이 필요합니다." }, { status: 401 });
-  }
+  if (!user) return Response.json({ detail: "로그인이 필요합니다." }, { status: 401 });
 
   const path = new URL(request.url).searchParams.get("path") ?? "";
   if (!ALLOWED_SUBMIT_PATHS.has(path)) {
     return Response.json({ detail: "허용되지 않은 경로입니다." }, { status: 400 });
   }
   const service = serviceForPath(path);
-  if (!service) {
-    return Response.json({ detail: "지원하지 않는 서비스입니다." }, { status: 400 });
+  if (!service) return Response.json({ detail: "지원하지 않는 서비스입니다." }, { status: 400 });
+
+  // 업로드 크기 제한
+  const form = await request.formData();
+  let total = 0;
+  for (const v of form.values()) {
+    if (v instanceof File) {
+      if (v.size > MAX_UPLOAD_BYTES) {
+        return Response.json({ detail: "파일이 너무 큽니다 (최대 15MB)." }, { status: 413 });
+      }
+      total += v.size;
+    }
+  }
+  if (total > MAX_TOTAL_UPLOAD_BYTES) {
+    return Response.json({ detail: "업로드 용량이 너무 큽니다 (합계 최대 30MB)." }, { status: 413 });
   }
 
-  const cost = CREDIT_COSTS[service];
-  // 사전 잔액 확인 (무제한 사용자는 통과)
-  if (!user.unlimited && user.credits < cost) {
+  // 1) 선차감(원자적 예약) — 동시 요청 초과 사용 차단
+  const reserve = reserveCredits(user.id, service);
+  if (!reserve.ok) {
     return Response.json(
-      { detail: "크레딧이 부족합니다.", balance: user.credits, required: cost },
+      { detail: "크레딧이 부족합니다.", balance: reserve.balance, required: reserve.required },
       { status: 402 }
     );
   }
 
-  const form = await request.formData();
-  const upstream = await fetch(`${MARV_BASE}${path}`, {
-    method: "POST",
-    headers: marvHeaders(),
-    body: form,
-  });
-  const text = await upstream.text();
-
-  // 잡 생성 성공 시에만 과금 (실패 응답은 무과금)
-  let charged: { amount: number; balance: number; unlimited: boolean } | null = null;
-  if (upstream.ok) {
-    let json: { job_id?: string } | null = null;
-    try {
-      json = JSON.parse(text);
-    } catch {
-      json = null;
-    }
-    // 잡 기반(tts/image/video/avatar)은 job_id, llm(chat)은 즉시 응답 → 둘 다 과금
-    const jobId = json?.job_id ?? null;
-    if (jobId || service === "llm") {
-      const r = chargeCredits(user.id, service, jobId);
-      if (r.ok) charged = { amount: r.charged, balance: r.balance, unlimited: r.unlimited };
-    }
+  // 2) 마브 호출
+  let upstream: Response;
+  let text: string;
+  try {
+    upstream = await marvFetch(path, { method: "POST", body: form }, 60_000);
+    text = await upstream.text();
+  } catch {
+    const balance = voidReservation(reserve.logId);
+    const headers = new Headers({ "content-type": "application/json" });
+    if (balance !== null) headers.set("X-MV-Balance", String(balance));
+    return new Response(
+      JSON.stringify({ detail: "생성 서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요." }),
+      { status: 503, headers }
+    );
   }
+
+  // 3) 결과 판정 → 정산 또는 환불
+  let json: { job_id?: string } | null = null;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    json = null;
+  }
+  const jobId = json?.job_id ?? null;
+  const success = upstream.ok && (jobId !== null || service === "llm");
 
   const headers = new Headers({
     "content-type": upstream.headers.get("content-type") ?? "application/json",
   });
-  if (charged) {
-    headers.set("X-MV-Charged", String(charged.amount));
-    headers.set("X-MV-Balance", String(charged.balance));
-    headers.set("X-MV-Unlimited", charged.unlimited ? "1" : "0");
+
+  if (success) {
+    settleReservation(reserve.logId, jobId, jobId !== null); // 잡 기반이면 정산 대기
+    headers.set("X-MV-Charged", String(reserve.charged));
+    headers.set("X-MV-Balance", String(reserve.balance));
+    headers.set("X-MV-Unlimited", reserve.unlimited ? "1" : "0");
+    return new Response(text, { status: upstream.status, headers });
   }
-  return new Response(text, { status: upstream.status, headers });
+
+  // 실패 → 차감 복구
+  const balance = voidReservation(reserve.logId);
+  if (balance !== null) headers.set("X-MV-Balance", String(balance));
+  return new Response(text, { status: upstream.status || 502, headers });
 }

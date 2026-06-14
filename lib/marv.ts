@@ -15,3 +15,26 @@ export const ALLOWED_SUBMIT_PATHS = new Set([
   "/v1/talking_head",
   "/v1/chat",
 ]);
+
+/** 업로드 제한 — 참조 이미지 등 */
+export const MAX_UPLOAD_BYTES = 15 * 1024 * 1024; // 파일당 15MB
+export const MAX_TOTAL_UPLOAD_BYTES = 30 * 1024 * 1024; // 합계 30MB
+
+/** 타임아웃 + 네트워크 오류를 던지는 fetch 래퍼 */
+export async function marvFetch(
+  path: string,
+  init: RequestInit = {},
+  timeoutMs = 30_000
+): Promise<Response> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    return await fetch(`${MARV_BASE}${path}`, {
+      ...init,
+      headers: { ...marvHeaders(), ...(init.headers ?? {}) },
+      signal: ctrl.signal,
+    });
+  } finally {
+    clearTimeout(t);
+  }
+}
