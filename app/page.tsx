@@ -4,6 +4,7 @@ import Footer from "@/components/footer";
 import Gallery from "@/components/gallery";
 import Header from "@/components/header";
 import Hero from "@/components/hero";
+import LabCta from "@/components/lab-cta";
 import Pricing from "@/components/pricing";
 import Problem from "@/components/problem";
 import Process from "@/components/process";
@@ -24,6 +25,7 @@ export default function Home() {
         <Values />
         <Segments />
         <Gallery />
+        <LabCta />
         <Process />
         <Pricing />
         <TrustDetail />
