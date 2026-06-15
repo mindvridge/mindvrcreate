@@ -2,6 +2,7 @@ import Link from "next/link";
 import AccountMenu from "./account-menu";
 
 const nav = [
+  { href: "/brand", label: "브랜드 소개" },
   { href: "/#value", label: "왜 마인드브이알" },
   { href: "/#usecases", label: "유스케이스" },
   { href: "/#demos", label: "데모" },

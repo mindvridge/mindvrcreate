@@ -15,7 +15,7 @@ const problems = [
   {
     index: "03",
     title: "템플릿이거나",
-    body: "정해진 아바타 중에서 고르는 방식으로는 당신의 캐릭터·브랜드를 담을 수 없고, IP 소유권도 불분명합니다.",
+    body: "정해진 아바타 중에서 고르는 방식으로는 당신의 캐릭터·브랜드를 온전히 담을 수 없습니다.",
   },
 ];
 
@@ -47,8 +47,8 @@ export default function Problem() {
 
       <Reveal delay={150}>
         <p className="mt-12 max-w-3xl text-lg leading-relaxed text-paper-dim">
-          마인드브이알은 셋 다 포기하지 않습니다. 한국어에 최적화된 자체 제작 역량과{" "}
-          <span className="font-semibold text-lime">전용 제작 + IP 전부 양도</span>로
+          마인드브이알은 셋 다 포기하지 않습니다. 한국어에 최적화된{" "}
+          <span className="font-semibold text-lime">자체 제작 역량과 전용 제작</span>으로
           답합니다.
         </p>
       </Reveal>
