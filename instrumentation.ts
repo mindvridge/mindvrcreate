@@ -6,8 +6,10 @@ export async function register() {
   const { startRateLimitSweep } = await import("./lib/ratelimit");
   try {
     await ensureSchema();
-  } catch {
-    /* 첫 요청 시 재시도 */
+    console.log("[mv] DB 준비 완료");
+  } catch (e) {
+    // 시작 시 1회 명확히 로깅 (이후 요청에서 자동 재시도)
+    console.error("[mv] DB 연결 실패 —", e instanceof Error ? e.message : e);
   }
   startBackgroundJobs();
   startRateLimitSweep();

@@ -15,8 +15,16 @@ const g = globalThis as GlobalWithPool;
 
 function getPool(): Pool {
   if (!g.__mvPool) {
+    const cs = process.env.DATABASE_URL?.trim();
+    // 미설정/미해결 참조(${{...}})/형식 오류를 pg의 모호한 SASL 에러 대신 명확히 알린다.
+    if (!cs || !/^postgres(ql)?:\/\/[^@\s]+:[^@\s]+@/.test(cs)) {
+      throw new Error(
+        "DATABASE_URL이 설정되지 않았거나 비밀번호가 없습니다. Railway에서 PostgreSQL을 추가한 뒤, " +
+          "앱 서비스 Variables 에 DATABASE_URL = ${{Postgres.DATABASE_URL}} 참조를 연결하세요."
+      );
+    }
     g.__mvPool = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString: cs,
       ssl: process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: false } : undefined,
       max: 10,
     });
