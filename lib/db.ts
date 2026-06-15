@@ -93,6 +93,18 @@ const SCHEMA = `
 
   CREATE UNIQUE INDEX IF NOT EXISTS idx_redemption_once ON coupon_redemptions(code, user_id);
   CREATE INDEX IF NOT EXISTS idx_redemption_uid ON coupon_redemptions(user_id);
+
+  CREATE TABLE IF NOT EXISTS creations (
+    id         BIGSERIAL PRIMARY KEY,
+    user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    job_id     TEXT NOT NULL,
+    service    TEXT NOT NULL,
+    kind       TEXT NOT NULL,
+    prompt     TEXT,
+    created_at TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_creations_user ON creations(user_id, id DESC);
 `;
 
 /**

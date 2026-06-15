@@ -19,6 +19,14 @@ type Log = {
   created_at: string;
 };
 type Usage = { service: string; count: number; credits: number };
+type Creation = {
+  id: number;
+  job_id: string;
+  service: string;
+  kind: "image" | "video" | "audio";
+  prompt: string | null;
+  created_at: string;
+};
 
 const TYPE_LABEL: Record<string, string> = {
   signup_bonus: "가입 보너스",
@@ -35,6 +43,55 @@ function fmtTime(iso: string): string {
   ).padStart(2, "0")}`;
 }
 
+const KIND_LABEL: Record<string, string> = { image: "이미지", video: "영상", audio: "오디오" };
+
+function CreationCard({ c }: { c: Creation }) {
+  const [err, setErr] = useState(false);
+  const url = `/api/account/creations/${c.id}/file`;
+  const ext = c.kind === "image" ? "png" : c.kind === "video" ? "mp4" : "wav";
+
+  return (
+    <div className="flex flex-col border border-ink-line bg-ink">
+      <div className="flex aspect-square items-center justify-center overflow-hidden bg-ink-soft">
+        {err ? (
+          <span className="px-3 text-center text-xs text-paper-faint">처리 중이거나 만료된 결과입니다</span>
+        ) : c.kind === "image" ? (
+          <a href={url} target="_blank" rel="noreferrer" className="h-full w-full">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={url} alt={c.prompt ?? "생성 이미지"} onError={() => setErr(true)} className="h-full w-full cursor-zoom-in object-cover" />
+          </a>
+        ) : c.kind === "video" ? (
+          <video src={url} controls playsInline onError={() => setErr(true)} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex w-full flex-col items-center gap-3 px-4">
+            <span className="text-3xl">♪</span>
+            <audio src={url} controls onError={() => setErr(true)} className="w-full" />
+          </div>
+        )}
+      </div>
+      <div className="flex items-center justify-between gap-2 px-3 py-2.5">
+        <div className="min-w-0">
+          <p className="font-mono text-[10px] tracking-[0.15em] text-paper-faint">{KIND_LABEL[c.kind]}</p>
+          {c.prompt && (
+            <p className="truncate text-xs text-paper-dim" title={c.prompt}>
+              {c.prompt}
+            </p>
+          )}
+        </div>
+        {!err && (
+          <a
+            href={url}
+            download={`mindvr-${c.id}.${ext}`}
+            className="shrink-0 text-[11px] font-semibold text-paper-faint hover:text-lime"
+          >
+            저장
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AccountPanel({
   initialCredits,
   unlimited,
@@ -49,6 +106,18 @@ export default function AccountPanel({
   const [credits, setCredits] = useState(initialCredits);
   const [logs, setLogs] = useState<Log[]>([]);
   const [usage, setUsage] = useState<Usage[]>([]);
+  const [creations, setCreations] = useState<Creation[]>([]);
+
+  const loadCreations = useCallback(
+    () =>
+      fetch("/api/account/creations", { cache: "no-store" })
+        .then((r) => r.json())
+        .then((d) => {
+          if (Array.isArray(d.items)) setCreations(d.items);
+        })
+        .catch(() => {}),
+    []
+  );
 
   // 쿠폰
   const [coupon, setCoupon] = useState("");
@@ -68,7 +137,8 @@ export default function AccountPanel({
   );
   useEffect(() => {
     loadUsage();
-  }, [loadUsage]);
+    loadCreations();
+  }, [loadUsage, loadCreations]);
 
   const redeem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,6 +188,40 @@ export default function AccountPanel({
         </div>
       </section>
 
+      {/* 내 갤러리 — 테스트 랩 생성물 */}
+      <section>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-mono text-xs tracking-[0.2em] text-paper-faint">GALLERY · 내 생성물</h2>
+          <button
+            onClick={loadCreations}
+            className="font-mono text-[11px] tracking-[0.15em] text-paper-faint transition-colors hover:text-lime"
+          >
+            새로고침 ↻
+          </button>
+        </div>
+        {creations.length > 0 ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {creations.map((c) => (
+              <CreationCard key={c.id} c={c} />
+            ))}
+          </div>
+        ) : (
+          <div className="border border-dashed border-ink-line p-10 text-center">
+            <p className="text-sm text-paper-faint">
+              아직 생성한 결과물이 없습니다.{" "}
+              <a href="/test" className="font-semibold text-lime underline-offset-4 hover:underline">
+                테스트 랩
+              </a>
+              에서 이미지·영상·오디오를 만들어 보세요.
+            </p>
+          </div>
+        )}
+        <p className="mt-3 text-xs text-paper-faint">
+          * 테스트 랩에서 만든 이미지·영상·음성·음악이 자동으로 모입니다. 방금 만든 결과는 처리가 끝난 뒤
+          새로고침하면 나타납니다.
+        </p>
+      </section>
+
       {/* 쿠폰 등록 */}
       <section>
         <h2 className="mb-4 font-mono text-xs tracking-[0.2em] text-paper-faint">COUPON · 쿠폰 등록</h2>
@@ -146,8 +250,8 @@ export default function AccountPanel({
       {/* 서비스별 단가 */}
       <section>
         <h2 className="mb-4 font-mono text-xs tracking-[0.2em] text-paper-faint">PRICE · 서비스별 크레딧 단가</h2>
-        <div className="grid grid-cols-2 gap-px border border-ink-line bg-ink-line sm:grid-cols-3 lg:grid-cols-5">
-          {(["llm", "tts", "image", "video", "avatar"] as Service[]).map((s) => (
+        <div className="grid grid-cols-2 gap-px border border-ink-line bg-ink-line sm:grid-cols-3 lg:grid-cols-6">
+          {(["llm", "tts", "image", "video", "music", "avatar"] as Service[]).map((s) => (
             <div key={s} className="bg-ink p-5">
               <p className="font-mono text-[10px] tracking-[0.15em] text-paper-faint">
                 {SERVICE_LABELS[s]}

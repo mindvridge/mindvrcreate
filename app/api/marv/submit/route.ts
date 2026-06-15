@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { serviceForPath } from "@/lib/credits";
+import { recordCreation } from "@/lib/creations";
 import { reserveCredits, settleReservation, voidReservation } from "@/lib/ledger";
 import {
   ALLOWED_SUBMIT_PATHS,
@@ -92,6 +93,15 @@ export async function POST(request: Request) {
       await settleReservation(reserve.logId, null, false); // 비교 모드는 즉시 정산
     } else {
       await settleReservation(reserve.logId, jobId, jobId !== null); // 잡 기반이면 정산 대기
+    }
+    // 내 갤러리용 생성물 기록 (파일을 만드는 서비스만)
+    const promptKo = form.get("prompt_ko");
+    const prompt = typeof promptKo === "string" ? promptKo : null;
+    try {
+      const ids = compareJobs.length > 0 ? compareJobs.map((j) => j.job_id as string) : jobId ? [jobId] : [];
+      for (const id of ids) await recordCreation(user.id, id, service, prompt);
+    } catch {
+      /* 기록 실패는 생성 흐름을 막지 않는다 */
     }
     headers.set("X-MV-Charged", String(reserve.charged));
     headers.set("X-MV-Balance", String(reserve.balance));
