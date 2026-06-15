@@ -10,7 +10,6 @@ import Problem from "@/components/problem";
 import Process from "@/components/process";
 import Segments from "@/components/segments";
 import StickyCta from "@/components/sticky-cta";
-import TrustBar from "@/components/trust-bar";
 import TrustDetail from "@/components/trust-detail";
 import Values from "@/components/values";
 
@@ -20,11 +19,10 @@ export default function Home() {
       <Header />
       <main className="flex-1">
         <Hero />
-        <TrustBar />
+        <Gallery />
         <Problem />
         <Values />
         <Segments />
-        <Gallery />
         <LabCta />
         <Process />
         <Pricing />

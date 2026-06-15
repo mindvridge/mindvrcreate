@@ -23,7 +23,7 @@ export default function Problem() {
   return (
     <section className="mx-auto max-w-6xl px-5 py-24 sm:py-32">
       <SectionHeader
-        index="01"
+        index="02"
         label="PROBLEM"
         title={
           <>
