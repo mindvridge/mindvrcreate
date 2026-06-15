@@ -18,10 +18,28 @@ const doings = [
   { tag: "PERSONA", title: "페르소나 설계", body: "상담사·면접관·인플루언서·디지털트윈 등 용도에 맞는 인물을 구성합니다." },
 ];
 
+const products = [
+  {
+    tag: "MAV",
+    name: "메타버스 상담 MAV",
+    body: "아바타 기반 익명 심리상담 플랫폼. AI 감정 분석으로 청소년 상담 현장에서 운영되고 있습니다.",
+  },
+  {
+    tag: "MINDPREP",
+    name: "AI 면접훈련 마인드프랩",
+    body: "AI 아바타 면접관과의 모의 면접으로 면접 불안을 줄이고, 표정·음성·답변 분석 리포트를 제공합니다.",
+  },
+  {
+    tag: "VR MEDITATION",
+    name: "마음챙김 VR 명상",
+    body: "자연 환경의 몰입형 VR로 명상과 이완을 훈련하는 프로그램입니다.",
+  },
+];
+
 const facts = [
   { label: "GOV R&D", value: "정부 R&D 과제 수행" },
   { label: "PATENT", value: "특허 출원 2건" },
-  { label: "PRODUCT", value: "운영 중 제품 — 마인드프랩" },
+  { label: "OPERATION", value: "상담·훈련 서비스 운영" },
 ];
 
 export default function BrandPage() {
@@ -87,10 +105,51 @@ export default function BrandPage() {
           </Reveal>
         </section>
 
-        {/* 신뢰 */}
+        {/* 운영 중인 서비스 */}
         <section className="border-t border-ink-line bg-ink-soft/60">
           <div className="mx-auto max-w-6xl px-5 py-20 sm:py-24">
-            <SectionHeader index="03" label="WHY US" title="검증된 기술력으로 만듭니다." />
+            <SectionHeader
+              index="03"
+              label="PRODUCTS"
+              title="이미 운영 중인 서비스들."
+              lede="아바타·AI를 활용한 상담·훈련 서비스를 직접 운영해 왔습니다. 한국어 사용자와 AI 휴먼을 다뤄 온 경험이 AI 아바타 스튜디오의 바탕입니다."
+            />
+            <Reveal delay={80}>
+              <div className="mt-12 grid gap-px border border-ink-line bg-ink-line sm:grid-cols-3">
+                {products.map((p) => (
+                  <div key={p.tag} className="flex h-full flex-col bg-ink p-8">
+                    <div className="flex items-center justify-between">
+                      <p className="font-mono text-[11px] tracking-[0.2em] text-paper-faint">{p.tag}</p>
+                      <span className="border border-lime/40 px-2 py-0.5 font-mono text-[10px] tracking-widest text-lime">
+                        운영 중
+                      </span>
+                    </div>
+                    <h3 className="mt-4 text-xl font-bold">{p.name}</h3>
+                    <p className="mt-3 leading-relaxed text-paper-dim">{p.body}</p>
+                  </div>
+                ))}
+              </div>
+            </Reveal>
+            <Reveal delay={120}>
+              <p className="mt-6 text-sm text-paper-faint">
+                준비 중 — 프레젠테이션 훈련 · 사회불안 훈련.{" "}
+                <a
+                  href="https://mindvr.co.kr"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-lime underline-offset-4 hover:underline"
+                >
+                  마인드브이알 공식 사이트 →
+                </a>
+              </p>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* 신뢰 */}
+        <section className="border-t border-ink-line">
+          <div className="mx-auto max-w-6xl px-5 py-20 sm:py-24">
+            <SectionHeader index="04" label="WHY US" title="검증된 기술력으로 만듭니다." />
             <Reveal delay={80}>
               <div className="mt-12 grid gap-px border border-ink-line bg-ink-line sm:grid-cols-3">
                 {facts.map((f) => (
