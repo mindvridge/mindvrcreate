@@ -540,7 +540,7 @@ function useCompareRunner(lab: Lab) {
           return;
         }
         const charged = res.headers.get("X-MV-Charged");
-        notify("info", `${jobs.length}개 모델 비교 시작${charged ? ` · ${charged} 크레딧 사용` : ""}`);
+        notify("info", `이미지 ${jobs.length}장 생성 시작${charged ? ` · ${charged} 크레딧 사용` : ""}`);
         setItems(jobs.map((j) => ({ jobId: j.job_id, model: j.model ?? "모델", phase: "polling" as const })));
         setPhase("running");
 
@@ -557,12 +557,12 @@ function useCompareRunner(lab: Lab) {
                 const r = await fetch(`/api/marv/jobs/${id}/result`);
                 const url = URL.createObjectURL(await r.blob());
                 setItems((prev) => prev?.map((it) => (it.jobId === id ? { ...it, phase: "done", url } : it)) ?? prev);
-                if (++done === jobs.length) notify("success", "모델 비교가 완료됐어요!");
+                if (++done === jobs.length) notify("success", "이미지 4장 생성이 완료됐어요!");
               } else if (job.status === "failed") {
                 clearInterval(timers.current[id]);
                 delete timers.current[id];
                 setItems((prev) => prev?.map((it) => (it.jobId === id ? { ...it, phase: "error" } : it)) ?? prev);
-                if (++done === jobs.length) notify("success", "모델 비교가 완료됐어요!");
+                if (++done === jobs.length) notify("success", "이미지 4장 생성이 완료됐어요!");
               }
             } catch {
               /* 일시 오류는 다음 폴링에서 재시도 */
@@ -584,13 +584,13 @@ function useCompareRunner(lab: Lab) {
 function CompareGrid({ items, onZoom }: { items: CompareItem[]; onZoom: (url: string) => void }) {
   return (
     <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {items.map((it) => (
+      {items.map((it, i) => (
         <div key={it.jobId} className="animate-pop border border-ink-line bg-ink-soft">
           <div className="flex aspect-square items-center justify-center overflow-hidden bg-ink">
             {it.phase === "done" && it.url ? (
               <button onClick={() => onZoom(it.url!)} className="h-full w-full">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={it.url} alt={`${it.model} 생성 결과`} className="h-full w-full cursor-zoom-in object-cover" />
+                <img src={it.url} alt={`생성 결과 ${i + 1}`} className="h-full w-full cursor-zoom-in object-cover" />
               </button>
             ) : it.phase === "error" ? (
               <span className="px-2 text-center text-xs text-red-600">생성 실패</span>
@@ -601,13 +601,11 @@ function CompareGrid({ items, onZoom }: { items: CompareItem[]; onZoom: (url: st
             )}
           </div>
           <div className="flex items-center justify-between gap-2 px-2.5 py-2">
-            <p className="truncate font-mono text-[10px] text-paper-dim" title={it.model}>
-              {it.model}
-            </p>
+            <p className="font-mono text-[10px] text-paper-dim">이미지 {i + 1}</p>
             {it.phase === "done" && it.url && (
               <a
                 href={it.url}
-                download={`mindvr-${it.model}-${it.jobId.slice(0, 6)}.png`}
+                download={`mindvr-${it.jobId.slice(0, 8)}.png`}
                 className="shrink-0 text-[10px] font-semibold text-paper-faint hover:text-lime"
               >
                 저장
@@ -681,7 +679,7 @@ function ImagePanel({ lab }: { lab: Lab }) {
           <span className="text-lime">
             <Spinner />
           </span>
-          <p className="text-sm font-semibold">4개 모델에 동시 요청을 보내는 중…</p>
+          <p className="text-sm font-semibold">이미지 4장을 동시에 만드는 중…</p>
         </div>
       )}
       {compare.items && <CompareGrid items={compare.items} onZoom={setZoom} />}
