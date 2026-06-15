@@ -5,5 +5,6 @@ import { listUsers, serviceUsage } from "@/lib/ledger";
 export async function GET() {
   const me = await getCurrentUser();
   if (!me?.is_admin) return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
-  return NextResponse.json({ users: listUsers(), usage: serviceUsage() });
+  const [users, usage] = await Promise.all([listUsers(), serviceUsage()]);
+  return NextResponse.json({ users, usage });
 }

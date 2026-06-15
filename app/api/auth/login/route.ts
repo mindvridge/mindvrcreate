@@ -27,14 +27,14 @@ export async function POST(request: Request) {
     );
   }
 
-  const row = getUserByEmail(body.email ?? "");
+  const row = await getUserByEmail(body.email ?? "");
   const ok = row ? await verifyPassword(body.password ?? "", row.password_hash) : false;
   if (!row || !ok) {
     return NextResponse.json({ error: "이메일 또는 비밀번호가 올바르지 않습니다." }, { status: 401 });
   }
 
-  const token = createSession(row.id);
-  const res = NextResponse.json({ user: getUserById(row.id) });
+  const token = await createSession(row.id);
+  const res = NextResponse.json({ user: await getUserById(row.id) });
   res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
   return res;
 }

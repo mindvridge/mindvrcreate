@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
   }
 
-  const r = redeemCoupon(user.id, body.code ?? "");
+  const r = await redeemCoupon(user.id, body.code ?? "");
   if (!r.ok) return NextResponse.json({ error: r.error }, { status: 400 });
   return NextResponse.json({ credits: r.credits, balance: r.balance, code: r.code });
 }

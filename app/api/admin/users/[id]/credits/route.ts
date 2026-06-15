@@ -18,7 +18,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     return NextResponse.json({ error: "충전/차감할 크레딧을 입력하세요." }, { status: 400 });
   }
 
-  const result = grantCredits(id, amount, body.note ?? "관리자 충전");
+  const result = await grantCredits(id, amount, body.note ?? "관리자 충전");
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
   return NextResponse.json({ balance: result.balance });
 }

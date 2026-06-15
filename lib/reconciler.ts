@@ -20,7 +20,7 @@ export function startBackgroundJobs() {
   const reconcile = async () => {
     let pend: { job_id: string }[];
     try {
-      pend = pendingChargedJobs();
+      pend = await pendingChargedJobs();
     } catch {
       return;
     }
@@ -29,8 +29,8 @@ export function startBackgroundJobs() {
         const res = await marvFetch(`/v1/jobs/${job_id}`, { cache: "no-store" }, 10_000);
         if (!res.ok) continue;
         const job = (await res.json()) as { status?: string };
-        if (job.status === "finished") markSettled(job_id);
-        else if (job.status === "failed") refundForFailedJobByJobId(job_id);
+        if (job.status === "finished") await markSettled(job_id);
+        else if (job.status === "failed") await refundForFailedJobByJobId(job_id);
       } catch {
         /* 다음 주기에 재시도 */
       }
@@ -39,10 +39,6 @@ export function startBackgroundJobs() {
 
   setInterval(() => void reconcile(), 60_000).unref?.();
   setInterval(() => {
-    try {
-      cleanupExpiredSessions();
-    } catch {
-      /* ignore */
-    }
+    void cleanupExpiredSessions().catch(() => {});
   }, 3600_000).unref?.();
 }

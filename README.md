@@ -2,39 +2,51 @@
 
 한국어 특화 AI 아바타 스튜디오 소개 사이트와, 회원·크레딧 기반 생성 테스트 랩(음성·대화·이미지·영상·아바타).
 
+데이터는 **PostgreSQL**에 저장합니다. 회원·크레딧·쿠폰 등 모든 상태가 DB에 있으므로,
+앱은 무상태(stateless)이고 재배포·재시작·다중 인스턴스에도 데이터가 보존됩니다.
+
 ## 로컬 실행
 
 ```bash
 npm install
+# Postgres 연결 문자열 필요 (로컬 docker 예시)
+# docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=pw -e POSTGRES_DB=mvdb postgres:16
+export DATABASE_URL="postgres://postgres:pw@localhost:5432/mvdb"
 npm run dev      # http://localhost:3000
 # 또는 운영 빌드
 npm run build && npm run start
 ```
 
+스키마(테이블·인덱스)는 첫 실행 시 자동 생성됩니다(`lib/db.ts`의 `CREATE TABLE IF NOT EXISTS`).
+
 ## 환경 변수
 
 | 변수 | 기본값 | 설명 |
 |---|---|---|
+| `DATABASE_URL` | (필수) | PostgreSQL 연결 문자열. Railway Postgres 추가 시 자동 주입 |
+| `DATABASE_SSL` | (없음) | 공개 프록시 등 SSL 필요 시 `true` (내부 연결은 불필요) |
 | `MARV_API_BASE` | `https://maket.mindvr.co.kr` | 마브 생성 API 베이스 URL |
 | `MARV_API_KEY` | (없음) | 마브 API 인증키. 마브에 인증이 켜지면 설정. 코드에 두지 않음 |
 | `ADMIN_EMAIL` | `mindvridge.official@gmail.com` | 관리자 계정 이메일 |
-| `ADMIN_SETUP_CODE` | (없음) | 관리자 부트스트랩 코드. `ADMIN_EMAIL`이 **최초 가입자**면 자동 관리자가 되고, 이후에 가입할 때는 이 코드를 함께 제출해야 관리자 권한을 받습니다(이메일 선점 탈취 방지) |
-| `DB_PATH` | `./data/app.db` | SQLite 파일 경로 |
+| `ADMIN_SETUP_CODE` | (없음) | 관리자 부트스트랩 코드. `ADMIN_EMAIL`이 **최초 가입자**면 자동 관리자가 되고, 이후 가입 시엔 이 코드를 함께 제출해야 관리자 권한을 받습니다(이메일 선점 탈취 방지) |
 
 `.env.local` 에 설정합니다 (이 파일은 git 에 커밋되지 않습니다).
 
 ## 배포 (Railway)
 
-이 앱은 서버 기능(인증·크레딧·마브 프록시)을 쓰므로 **정적 호스팅이 아니라 Node 서버**가 필요합니다.
+이 앱은 서버 기능(인증·크레딧·마브 프록시) + PostgreSQL이 필요합니다.
 
 1. Railway → New Project → Deploy from GitHub repo → `mindvridge/mindvrcreate`
-2. 빌드/실행은 자동 감지됩니다 (`npm run build` → `npm run start`).
-3. **볼륨 필수** — SQLite 데이터를 영속화하려면:
-   - 서비스에 Volume 추가 후 마운트 경로를 `/data` 로 지정
-   - 환경변수 `DB_PATH=/data/app.db` 설정
-   - (볼륨이 없으면 재배포·재시작마다 회원/크레딧 데이터가 초기화됩니다)
-4. 필요 시 `MARV_API_KEY`, `ADMIN_EMAIL` 환경변수 추가
+2. 같은 프로젝트에 **New → Database → Add PostgreSQL** 추가
+   - Postgres 서비스가 생기면 앱 서비스의 Variables에 **`DATABASE_URL`** 을 연결합니다
+     (Variables → New Variable → Add Reference → Postgres의 `DATABASE_URL` 선택,
+     또는 값에 `${{Postgres.DATABASE_URL}}` 입력)
+3. 빌드/실행은 자동 감지됩니다 (`npm run build` → `npm run start`).
+4. 필요 시 `ADMIN_SETUP_CODE`, `MARV_API_KEY` 환경변수 추가
 5. 배포 후 Settings → Networking → Generate Domain 으로 공개 주소 발급
+6. 발급된 주소 `/signup` 에서 `ADMIN_EMAIL` 로 **가장 먼저** 가입 → 자동 관리자
+
+> 스키마는 첫 부팅 시 자동 생성되므로 별도 마이그레이션 명령이 필요 없습니다.
 
 ## 크레딧 정책
 

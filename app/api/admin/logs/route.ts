@@ -9,5 +9,5 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const userId = url.searchParams.get("user_id") || undefined;
   const limit = Number(url.searchParams.get("limit")) || 100;
-  return NextResponse.json({ logs: getLogs({ userId, limit }) });
+  return NextResponse.json({ logs: await getLogs({ userId, limit }) });
 }

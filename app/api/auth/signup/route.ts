@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });
 
-  const token = createSession(result.user.id);
+  const token = await createSession(result.user.id);
   const res = NextResponse.json({ user: result.user });
   res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
   return res;

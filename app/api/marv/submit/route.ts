@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   }
 
   // 1) 선차감(원자적 예약) — 동시 요청 초과 사용 차단
-  const reserve = reserveCredits(user.id, service);
+  const reserve = await reserveCredits(user.id, service);
   if (!reserve.ok) {
     return Response.json(
       { detail: "크레딧이 부족합니다.", balance: reserve.balance, required: reserve.required },
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     upstream = await marvFetch(path, { method: "POST", body: form }, 60_000);
     text = await upstream.text();
   } catch {
-    const balance = voidReservation(reserve.logId);
+    const balance = await voidReservation(reserve.logId);
     const headers = new Headers({ "content-type": "application/json" });
     if (balance !== null) headers.set("X-MV-Balance", String(balance));
     return new Response(
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
   });
 
   if (success) {
-    settleReservation(reserve.logId, jobId, jobId !== null); // 잡 기반이면 정산 대기
+    await settleReservation(reserve.logId, jobId, jobId !== null); // 잡 기반이면 정산 대기
     headers.set("X-MV-Charged", String(reserve.charged));
     headers.set("X-MV-Balance", String(reserve.balance));
     headers.set("X-MV-Unlimited", reserve.unlimited ? "1" : "0");
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
   }
 
   // 실패 → 차감 복구
-  const balance = voidReservation(reserve.logId);
+  const balance = await voidReservation(reserve.logId);
   if (balance !== null) headers.set("X-MV-Balance", String(balance));
   return new Response(text, { status: upstream.status || 502, headers });
 }

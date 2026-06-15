@@ -1,6 +1,6 @@
-import { getDb } from "./db";
+import { q, tx } from "./db";
 
-/** 서버 전용 — 쿠폰 생성/조회/관리 및 사용자 사용(redeem) */
+/** 서버 전용 — 쿠폰 생성/조회/관리 및 사용(redeem) (PostgreSQL) */
 
 export type Coupon = {
   code: string;
@@ -14,12 +14,13 @@ export type Coupon = {
 };
 
 const CODE_RE = /^[A-Z0-9][A-Z0-9-]{2,31}$/;
+const SELECT_COLS =
+  "code, credits, max_redemptions, redeemed_count, expires_at, active, note, created_at";
 
 export function normalizeCode(code: string): string {
   return code.trim().toUpperCase();
 }
 
-/** 무작위 쿠폰 코드 생성 (혼동 문자 제외) */
 export function generateCode(prefix = "MV"): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let body = "";
@@ -27,19 +28,14 @@ export function generateCode(prefix = "MV"): string {
   return `${prefix}-${body}`;
 }
 
-const SELECT_COLS =
-  "code, credits, max_redemptions, redeemed_count, expires_at, active, note, created_at";
-
-export function getCoupon(code: string): Coupon | undefined {
-  return getDb()
-    .prepare(`SELECT ${SELECT_COLS} FROM coupons WHERE code = ?`)
-    .get(normalizeCode(code)) as Coupon | undefined;
+export async function getCoupon(code: string): Promise<Coupon | undefined> {
+  const r = await q<Coupon>(`SELECT ${SELECT_COLS} FROM coupons WHERE code = $1`, [normalizeCode(code)]);
+  return r.rows[0];
 }
 
-export function listCoupons(): Coupon[] {
-  return getDb()
-    .prepare(`SELECT ${SELECT_COLS} FROM coupons ORDER BY created_at DESC`)
-    .all() as Coupon[];
+export async function listCoupons(): Promise<Coupon[]> {
+  const r = await q<Coupon>(`SELECT ${SELECT_COLS} FROM coupons ORDER BY created_at DESC`);
+  return r.rows;
 }
 
 export type CreateCouponInput = {
@@ -52,7 +48,7 @@ export type CreateCouponInput = {
 };
 export type CreateCouponResult = { ok: true; coupon: Coupon } | { ok: false; error: string };
 
-export function createCoupon(input: CreateCouponInput): CreateCouponResult {
+export async function createCoupon(input: CreateCouponInput): Promise<CreateCouponResult> {
   const code = input.code ? normalizeCode(input.code) : generateCode();
   if (!CODE_RE.test(code)) {
     return { ok: false, error: "코드는 영문 대문자·숫자·하이픈 3~32자여야 합니다." };
@@ -75,26 +71,25 @@ export function createCoupon(input: CreateCouponInput): CreateCouponResult {
     expires = d.toISOString();
   }
 
-  const db = getDb();
-  if (db.prepare("SELECT 1 FROM coupons WHERE code = ?").get(code)) {
+  if ((await q("SELECT 1 FROM coupons WHERE code = $1", [code])).rowCount > 0) {
     return { ok: false, error: "이미 존재하는 코드입니다." };
   }
-  db.prepare(
+  await q(
     `INSERT INTO coupons (code, credits, max_redemptions, redeemed_count, expires_at, active, note, created_by, created_at)
-     VALUES (?, ?, ?, 0, ?, 1, ?, ?, ?)`
-  ).run(code, credits, max, expires, input.note ?? null, input.createdBy ?? null, new Date().toISOString());
-  return { ok: true, coupon: getCoupon(code)! };
-}
-
-export function setCouponActive(code: string, active: boolean): boolean {
-  return (
-    getDb().prepare("UPDATE coupons SET active = ? WHERE code = ?").run(active ? 1 : 0, normalizeCode(code))
-      .changes > 0
+     VALUES ($1,$2,$3,0,$4,1,$5,$6,$7)`,
+    [code, credits, max, expires, input.note ?? null, input.createdBy ?? null, new Date().toISOString()]
   );
+  return { ok: true, coupon: (await getCoupon(code))! };
 }
 
-export function deleteCoupon(code: string): boolean {
-  return getDb().prepare("DELETE FROM coupons WHERE code = ?").run(normalizeCode(code)).changes > 0;
+export async function setCouponActive(code: string, active: boolean): Promise<boolean> {
+  const r = await q("UPDATE coupons SET active = $1 WHERE code = $2", [active ? 1 : 0, normalizeCode(code)]);
+  return r.rowCount > 0;
+}
+
+export async function deleteCoupon(code: string): Promise<boolean> {
+  const r = await q("DELETE FROM coupons WHERE code = $1", [normalizeCode(code)]);
+  return r.rowCount > 0;
 }
 
 export type RedeemResult =
@@ -102,46 +97,52 @@ export type RedeemResult =
   | { ok: false; error: string };
 
 /** 사용자 쿠폰 사용 — 만료·중복·소진 검증 후 원자적 지급 */
-export function redeemCoupon(userId: string, rawCode: string): RedeemResult {
+export function redeemCoupon(userId: string, rawCode: string): Promise<RedeemResult> {
   const code = normalizeCode(rawCode);
-  if (!code) return { ok: false, error: "쿠폰 코드를 입력하세요." };
+  if (!code) return Promise.resolve({ ok: false as const, error: "쿠폰 코드를 입력하세요." });
 
-  const db = getDb();
-  return db.transaction((): RedeemResult => {
-    const c = db
-      .prepare(
-        "SELECT credits, max_redemptions, redeemed_count, expires_at, active FROM coupons WHERE code = ?"
+  return tx(async (c): Promise<RedeemResult> => {
+    const coupon = (
+      await c.query(
+        "SELECT credits, max_redemptions, redeemed_count, expires_at, active FROM coupons WHERE code = $1",
+        [code]
       )
-      .get(code) as
+    ).rows[0] as
       | { credits: number; max_redemptions: number | null; redeemed_count: number; expires_at: string | null; active: number }
       | undefined;
-    if (!c) return { ok: false, error: "존재하지 않는 쿠폰입니다." };
-    if (!c.active) return { ok: false, error: "사용 중지된 쿠폰입니다." };
-    if (c.expires_at && new Date(c.expires_at).getTime() < Date.now()) {
+    if (!coupon) return { ok: false, error: "존재하지 않는 쿠폰입니다." };
+    if (!coupon.active) return { ok: false, error: "사용 중지된 쿠폰입니다." };
+    if (coupon.expires_at && new Date(coupon.expires_at).getTime() < Date.now()) {
       return { ok: false, error: "만료된 쿠폰입니다." };
     }
-    if (db.prepare("SELECT 1 FROM coupon_redemptions WHERE code = ? AND user_id = ?").get(code, userId)) {
-      return { ok: false, error: "이미 사용한 쿠폰입니다." };
-    }
+    const dup = await c.query("SELECT 1 FROM coupon_redemptions WHERE code = $1 AND user_id = $2", [code, userId]);
+    if ((dup.rowCount ?? 0) > 0) return { ok: false, error: "이미 사용한 쿠폰입니다." };
 
     // 전체 사용 한도 원자적 증가 (동시 사용 초과 방지)
-    const upd = db
-      .prepare(
-        "UPDATE coupons SET redeemed_count = redeemed_count + 1 WHERE code = ? AND active = 1 AND (max_redemptions IS NULL OR redeemed_count < max_redemptions)"
-      )
-      .run(code);
-    if (upd.changes === 0) return { ok: false, error: "쿠폰이 모두 소진되었습니다." };
+    const upd = await c.query(
+      "UPDATE coupons SET redeemed_count = redeemed_count + 1 WHERE code = $1 AND active = 1 AND (max_redemptions IS NULL OR redeemed_count < max_redemptions)",
+      [code]
+    );
+    if ((upd.rowCount ?? 0) === 0) return { ok: false, error: "쿠폰이 모두 소진되었습니다." };
 
     const now = new Date().toISOString();
-    db.prepare(
-      "INSERT INTO coupon_redemptions (code, user_id, credits, created_at) VALUES (?, ?, ?, ?)"
-    ).run(code, userId, c.credits, now);
-    db.prepare("UPDATE users SET credits = credits + ? WHERE id = ?").run(c.credits, userId);
-    const balance = (db.prepare("SELECT credits FROM users WHERE id = ?").get(userId) as { credits: number }).credits;
-    db.prepare(
+    await c.query("INSERT INTO coupon_redemptions (code, user_id, credits, created_at) VALUES ($1,$2,$3,$4)", [
+      code,
+      userId,
+      coupon.credits,
+      now,
+    ]);
+    const balance = (
+      await c.query("UPDATE users SET credits = credits + $1 WHERE id = $2 RETURNING credits", [
+        coupon.credits,
+        userId,
+      ])
+    ).rows[0].credits as number;
+    await c.query(
       `INSERT INTO credit_logs (user_id, type, service, amount, unlimited, balance_after, job_id, settled, note, created_at)
-       VALUES (?, 'coupon', NULL, ?, 0, ?, NULL, 1, ?, ?)`
-    ).run(userId, c.credits, balance, `쿠폰 ${code}`, now);
-    return { ok: true, credits: c.credits, balance, code };
-  })();
+       VALUES ($1,'coupon',NULL,$2,0,$3,NULL,1,$4,$5)`,
+      [userId, coupon.credits, balance, `쿠폰 ${code}`, now]
+    );
+    return { ok: true, credits: coupon.credits, balance, code };
+  });
 }

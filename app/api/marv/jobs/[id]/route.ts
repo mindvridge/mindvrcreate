@@ -19,8 +19,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   let refundedBalance: number | null = null;
   try {
     const job = JSON.parse(text) as { status?: string };
-    if (job.status === "finished") markSettled(id);
-    else if (job.status === "failed") refundedBalance = refundForFailedJobByJobId(id);
+    if (job.status === "finished") await markSettled(id);
+    else if (job.status === "failed") refundedBalance = await refundForFailedJobByJobId(id);
   } catch {
     /* ignore */
   }
