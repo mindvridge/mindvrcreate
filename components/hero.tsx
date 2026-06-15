@@ -18,8 +18,7 @@ export default function Hero() {
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-paper-dim">
             템플릿 아바타가 아닙니다. 당신의 캐릭터·브랜드·페르소나 전용
-            디지털휴먼을 처음부터 끝까지 맞춤 제작합니다. 한국어 입모양과
-            억양까지 자연스럽게, 캐릭터 IP는 100% 고객 소유.
+            디지털휴먼을, 한국어 입모양과 억양까지 자연스럽게 만들어 드립니다.
           </p>
 
           <div className="mt-9 flex flex-wrap items-center gap-4">
@@ -36,9 +35,6 @@ export default function Hero() {
               제작 과정 보기
             </a>
           </div>
-          <p className="mt-4 text-sm text-paper-faint">
-            당신의 캐릭터로 한국어로 말하는 30초 영상 1컷 — 비용 없이 만들어 드립니다.
-          </p>
         </div>
 
         <HeroStage videoSrc={HERO_VIDEO_SRC} />
