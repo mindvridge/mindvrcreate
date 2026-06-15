@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CREDIT_COSTS, SERVICE_LABELS, type Service } from "@/lib/credits";
 
 type TabId = Service;
@@ -11,6 +11,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "llm", label: "대화 (LLM)" },
   { id: "image", label: "이미지 생성" },
   { id: "video", label: "영상 생성" },
+  { id: "music", label: "음악 생성" },
   { id: "avatar", label: "아바타" },
 ];
 
@@ -21,6 +22,7 @@ const ESTIMATE: Record<Service, string> = {
   image: "보통 30초~2분",
   video: "보통 수 분",
   avatar: "보통 수 분",
+  music: "보통 1~3분",
 };
 
 type ToastType = "success" | "error" | "info";
@@ -59,6 +61,69 @@ function Spinner({ className = "h-5 w-5" }: { className?: string }) {
       className={`inline-block animate-spin rounded-full border-2 border-current border-t-transparent ${className}`}
       aria-hidden
     />
+  );
+}
+
+/** File → object URL (변경/언마운트 시 자동 해제) */
+function useObjectUrl(file: File | null): string | null {
+  const url = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+  useEffect(
+    () => () => {
+      if (url) URL.revokeObjectURL(url);
+    },
+    [url]
+  );
+  return url;
+}
+
+/** 공용 이미지 첨부 — 썸네일 미리보기 + 파일명 + 제거 */
+function ImageDrop({
+  file,
+  fileUrl,
+  onFile,
+}: {
+  file: File | null;
+  fileUrl: string | null;
+  onFile: (f: File | null) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className="flex items-center gap-3">
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden border-2 border-dashed border-ink-line text-paper-faint transition-colors hover:border-lime"
+      >
+        {fileUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={fileUrl} alt="첨부 이미지" className="h-full w-full object-cover" />
+        ) : (
+          <span className="text-2xl leading-none">＋</span>
+        )}
+      </button>
+      <div className="min-w-0 text-sm">
+        {file ? (
+          <>
+            <p className="truncate font-semibold text-paper-dim">{file.name}</p>
+            <button
+              onClick={() => onFile(null)}
+              className="mt-1 text-xs font-semibold text-paper-faint hover:text-lime"
+            >
+              제거
+            </button>
+          </>
+        ) : (
+          <p className="text-paper-faint">사진 선택 (JPG·PNG)</p>
+        )}
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+      />
+    </div>
   );
 }
 
@@ -642,21 +707,33 @@ function ImagePanel({ lab }: { lab: Lab }) {
 function VideoPanel({ lab }: { lab: Lab }) {
   const { state, run } = useJobRunner(lab, "video");
   const [prompt, setPrompt] = useState("햇살 좋은 한강공원에서 강아지와 산책하는 사람, 시네마틱");
+  const [file, setFile] = useState<File | null>(null);
+  const fileUrl = useObjectUrl(file);
 
   const submit = () => {
     const f = new FormData();
-    f.set("model", "Wan 2.2 T2V");
-    f.set("prompt_ko", prompt);
+    // 이미지 첨부 시 image-to-video(I2V), 아니면 text-to-video(T2V)
+    f.set("model", file ? "Wan 2.2 I2V" : "Wan 2.2 T2V");
+    f.set("prompt_ko", localizePrompt(prompt));
     f.set("params_json", JSON.stringify({ duration_s: 5 }));
+    if (file) f.set("ref_image", file);
     run("/v1/video", f);
   };
 
   const busy = state.phase === "submitting" || state.phase === "polling";
   return (
     <div className="space-y-4">
-      <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={3} className={inputCls} />
+      <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={3} className={inputCls} placeholder="만들고 싶은 영상을 설명하세요" />
+
+      <div>
+        <p className="mb-2 font-mono text-[10px] tracking-[0.2em] text-paper-faint">
+          시작 이미지 (선택) — 첨부하면 그 이미지가 움직이는 영상으로 만듭니다
+        </p>
+        <ImageDrop file={file} fileUrl={fileUrl} onFile={setFile} />
+      </div>
+
       <CostButton service="video" lab={lab} onClick={submit} busy={busy}>
-        영상 생성 (5초)
+        {file ? "이미지로 영상 생성 (5초)" : "영상 생성 (5초)"}
       </CostButton>
       <GenerationProgress state={state} service="video" />
       <ResultCard key={state.phase === "done" ? state.jobId : "idle"} state={state} />
@@ -678,6 +755,7 @@ function AvatarPanel({ lab }: { lab: Lab }) {
   const [text, setText] = useState("안녕하세요! 이 영상은 테스트 페이지에서 방금 만들어졌습니다.");
   const [sample, setSample] = useState(AVATAR_SAMPLES[0].src);
   const [file, setFile] = useState<File | null>(null);
+  const fileUrl = useObjectUrl(file);
 
   const submit = async () => {
     const f = new FormData();
@@ -716,15 +794,111 @@ function AvatarPanel({ lab }: { lab: Lab }) {
             </button>
           ))}
         </div>
-        <label className="mt-3 block text-sm text-paper-dim">
-          또는 사진 업로드:{" "}
-          <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="text-xs" />
-        </label>
+        <p className="mb-2 mt-4 font-mono text-[10px] tracking-[0.2em] text-paper-faint">
+          또는 내 사진 첨부 — 첨부한 인물이 말하는 영상으로 만듭니다
+        </p>
+        <ImageDrop file={file} fileUrl={fileUrl} onFile={setFile} />
       </div>
       <CostButton service="avatar" lab={lab} onClick={submit} busy={busy}>
         말하는 아바타 생성 (6초)
       </CostButton>
       <GenerationProgress state={state} service="avatar" />
+      <ResultCard key={state.phase === "done" ? state.jobId : "idle"} state={state} />
+      <ErrorLine state={state} />
+    </div>
+  );
+}
+
+const MUSIC_GENRES = ["자동", "어쿠스틱", "팝", "발라드", "재즈", "Lo-Fi", "일렉트로닉", "시네마틱", "클래식", "힙합", "R&B", "록", "트로트"];
+const MUSIC_MOODS = ["자동", "밝은", "차분한", "감성적인", "신나는", "웅장한", "슬픈", "몽환적인"];
+
+function MusicPanel({ lab }: { lab: Lab }) {
+  const { state, run } = useJobRunner(lab, "music");
+  const [prompt, setPrompt] = useState("잔잔한 카페에서 어울리는 따뜻한 어쿠스틱 음악");
+  const [genre, setGenre] = useState("자동");
+  const [mood, setMood] = useState("자동");
+  const [instrumental, setInstrumental] = useState(true);
+  const [lyrics, setLyrics] = useState("");
+  const [duration, setDuration] = useState(30);
+
+  const submit = () => {
+    const f = new FormData();
+    f.set("model", "ACE-Step v1.5 XL");
+    f.set("prompt_ko", prompt);
+    if (genre !== "자동") f.set("genre", genre);
+    if (mood !== "자동") f.set("mood", mood);
+    f.set("instrumental", instrumental ? "true" : "false");
+    if (!instrumental && lyrics.trim()) f.set("lyrics", lyrics);
+    f.set("duration_s", String(duration));
+    run("/v1/music", f);
+  };
+
+  const busy = state.phase === "submitting" || state.phase === "polling";
+  return (
+    <div className="space-y-4">
+      <textarea
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        rows={3}
+        className={inputCls}
+        placeholder="만들고 싶은 음악을 설명하세요 (분위기·장면·악기 등)"
+      />
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="text-xs text-paper-faint">
+          장르
+          <select value={genre} onChange={(e) => setGenre(e.target.value)} className={`${inputCls} mt-1 max-w-[150px]`}>
+            {MUSIC_GENRES.map((g) => (
+              <option key={g}>{g}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs text-paper-faint">
+          분위기
+          <select value={mood} onChange={(e) => setMood(e.target.value)} className={`${inputCls} mt-1 max-w-[150px]`}>
+            {MUSIC_MOODS.map((m) => (
+              <option key={m}>{m}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs text-paper-faint">
+          길이
+          <select
+            value={duration}
+            onChange={(e) => setDuration(Number(e.target.value))}
+            className={`${inputCls} mt-1 max-w-[110px]`}
+          >
+            {[15, 30, 60].map((d) => (
+              <option key={d} value={d}>
+                {d}초
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <label className="flex items-center gap-2 text-sm text-paper-dim">
+        <input
+          type="checkbox"
+          checked={instrumental}
+          onChange={(e) => setInstrumental(e.target.checked)}
+          className="h-4 w-4 accent-lime"
+        />
+        연주곡 (보컬 없음)
+      </label>
+      {!instrumental && (
+        <textarea
+          value={lyrics}
+          onChange={(e) => setLyrics(e.target.value)}
+          rows={3}
+          className={inputCls}
+          placeholder="가사 (선택) — 비워두면 분위기에 맞춰 자동 작사됩니다"
+        />
+      )}
+
+      <CostButton service="music" lab={lab} onClick={submit} busy={busy}>
+        음악 생성
+      </CostButton>
+      <GenerationProgress state={state} service="music" />
       <ResultCard key={state.phase === "done" ? state.jobId : "idle"} state={state} />
       <ErrorLine state={state} />
     </div>
@@ -880,6 +1054,9 @@ export default function TestLab() {
         </div>
         <div className={tab === "video" ? "" : "hidden"}>
           <VideoPanel lab={lab} />
+        </div>
+        <div className={tab === "music" ? "" : "hidden"}>
+          <MusicPanel lab={lab} />
         </div>
         <div className={tab === "avatar" ? "" : "hidden"}>
           <AvatarPanel lab={lab} />

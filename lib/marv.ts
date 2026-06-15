@@ -14,6 +14,7 @@ export const ALLOWED_SUBMIT_PATHS = new Set([
   "/v1/video",
   "/v1/talking_head",
   "/v1/chat",
+  "/v1/music",
 ]);
 
 /** 업로드 제한 — 참조 이미지 등 */

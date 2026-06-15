@@ -10,7 +10,7 @@
  * 기준 단위: 1 크레딧 ≈ ₩10. 신규 가입 시 100 크레딧(₩1,000 상당) 무료 제공.
  */
 
-export type Service = "llm" | "tts" | "image" | "video" | "avatar";
+export type Service = "llm" | "tts" | "image" | "video" | "avatar" | "music";
 
 export const CREDIT_COSTS: Record<Service, number> = {
   llm: 1, // 대화 — 텍스트, 거의 무료
@@ -18,6 +18,7 @@ export const CREDIT_COSTS: Record<Service, number> = {
   image: 8, // 이미지 1장
   video: 40, // 영상 5초
   avatar: 60, // 아바타 6초 (립싱크 + 음성)
+  music: 20, // 음악 한 곡 (작곡 + 보컬/연주)
 };
 
 export const SERVICE_LABELS: Record<Service, string> = {
@@ -26,6 +27,7 @@ export const SERVICE_LABELS: Record<Service, string> = {
   image: "이미지 생성",
   video: "영상 생성",
   avatar: "아바타",
+  music: "음악 생성",
 };
 
 export const SIGNUP_BONUS = 100;
@@ -44,6 +46,7 @@ const PATH_TO_SERVICE: Record<string, Service> = {
   "/v1/video": "video",
   "/v1/talking_head": "avatar",
   "/v1/chat": "llm",
+  "/v1/music": "music",
 };
 
 export function serviceForPath(path: string): Service | null {
