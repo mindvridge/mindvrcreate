@@ -74,6 +74,11 @@ export default function Segments() {
         <p className="mt-6 font-mono text-[11px] tracking-[0.2em] text-paper-faint">
           <span className="text-lime">●</span> MAIN TRACK
         </p>
+        <p className="mt-4 max-w-2xl leading-relaxed text-paper-dim">
+          각 기능은 <span className="font-semibold text-lime">개별 API·제작</span>으로도 도입할 수
+          있습니다. 아바타 없이 LLM·TTS·아바타 영상 등 필요한 것만 골라 쓰세요. (실시간 아바타는 도입
+          상담)
+        </p>
       </Reveal>
     </section>
   );
