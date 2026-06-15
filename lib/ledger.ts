@@ -11,8 +11,12 @@ export type ReserveResult =
  * 마브 호출 *이전*에 크레딧을 원자적으로 예약(선차감)한다.
  * `UPDATE ... WHERE credits >= cost` 의 행 잠금으로 동시 요청 초과 사용이 불가능하다.
  */
-export function reserveCredits(userId: string, service: Service): Promise<ReserveResult> {
-  const cost = CREDIT_COSTS[service];
+export function reserveCredits(
+  userId: string,
+  service: Service,
+  quantity = 1
+): Promise<ReserveResult> {
+  const cost = CREDIT_COSTS[service] * Math.max(1, quantity);
   const now = new Date().toISOString();
 
   return tx(async (c): Promise<ReserveResult> => {

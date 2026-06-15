@@ -35,8 +35,19 @@ export async function POST(request: Request) {
     return Response.json({ detail: "업로드 용량이 너무 큽니다 (합계 최대 30MB)." }, { status: 413 });
   }
 
+  // 4개 모델 동시 비교(compare_models)는 이미지 4장이 생성되므로 4배 차감한다.
+  let quantity = 1;
+  if (service === "image") {
+    try {
+      const pj = form.get("params_json");
+      if (typeof pj === "string" && pj && JSON.parse(pj)?.compare_models) quantity = 4;
+    } catch {
+      /* params_json 파싱 실패는 단일 생성으로 처리 */
+    }
+  }
+
   // 1) 선차감(원자적 예약) — 동시 요청 초과 사용 차단
-  const reserve = await reserveCredits(user.id, service);
+  const reserve = await reserveCredits(user.id, service, quantity);
   if (!reserve.ok) {
     return Response.json(
       { detail: "크레딧이 부족합니다.", balance: reserve.balance, required: reserve.required },
@@ -61,21 +72,27 @@ export async function POST(request: Request) {
   }
 
   // 3) 결과 판정 → 정산 또는 환불
-  let json: { job_id?: string } | null = null;
+  let json: { job_id?: string; jobs?: { job_id?: string }[] } | null = null;
   try {
     json = JSON.parse(text);
   } catch {
     json = null;
   }
   const jobId = json?.job_id ?? null;
-  const success = upstream.ok && (jobId !== null || service === "llm");
+  // compare_models: 여러 잡이 한 번에 큐잉된다. 개별 잡 추적이 어려우므로 즉시 정산한다.
+  const compareJobs = Array.isArray(json?.jobs) ? json!.jobs!.filter((j) => j?.job_id) : [];
+  const success = upstream.ok && (jobId !== null || compareJobs.length > 0 || service === "llm");
 
   const headers = new Headers({
     "content-type": upstream.headers.get("content-type") ?? "application/json",
   });
 
   if (success) {
-    await settleReservation(reserve.logId, jobId, jobId !== null); // 잡 기반이면 정산 대기
+    if (compareJobs.length > 0) {
+      await settleReservation(reserve.logId, null, false); // 비교 모드는 즉시 정산
+    } else {
+      await settleReservation(reserve.logId, jobId, jobId !== null); // 잡 기반이면 정산 대기
+    }
     headers.set("X-MV-Charged", String(reserve.charged));
     headers.set("X-MV-Balance", String(reserve.balance));
     headers.set("X-MV-Unlimited", reserve.unlimited ? "1" : "0");

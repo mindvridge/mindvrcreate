@@ -428,13 +428,142 @@ function LlmPanel({ lab }: { lab: Lab }) {
   );
 }
 
+/** 4개 모델 동시 비교 — 한 번 제출로 여러 잡을 받아 각각 폴링/다운로드한다. */
+type CompareItem = { jobId: string; model: string; phase: "polling" | "done" | "error"; url?: string };
+
+function useCompareRunner(lab: Lab) {
+  const [items, setItems] = useState<CompareItem[] | null>(null);
+  const [phase, setPhase] = useState<"idle" | "submitting" | "running" | "error">("idle");
+  const [errMsg, setErrMsg] = useState("");
+  const timers = useRef<Record<string, ReturnType<typeof setInterval>>>({});
+  const notify = lab.notify;
+
+  const stop = useCallback(() => {
+    Object.values(timers.current).forEach((t) => clearInterval(t));
+    timers.current = {};
+  }, []);
+  useEffect(() => stop, [stop]);
+
+  const run = useCallback(
+    async (form: FormData) => {
+      stop();
+      setItems(null);
+      setErrMsg("");
+      setPhase("submitting");
+      try {
+        const res = await fetch(`/api/marv/submit?path=${encodeURIComponent("/v1/image")}`, {
+          method: "POST",
+          body: form,
+        });
+        const b = res.headers.get("X-MV-Balance");
+        if (b !== null) lab.setBalance(Number(b));
+        if (res.status === 402) {
+          setPhase("error");
+          setErrMsg("크레딧이 부족합니다.");
+          notify("error", "크레딧이 부족합니다. 충전 후 이용해 주세요.");
+          return;
+        }
+        const json = await res.json();
+        const jobs: { job_id: string; model?: string }[] = Array.isArray(json.jobs)
+          ? json.jobs.filter((j: { job_id?: string }) => j?.job_id)
+          : [];
+        if (!res.ok || jobs.length === 0) {
+          const m = json.detail ?? "요청에 실패했습니다.";
+          setPhase("error");
+          setErrMsg(m);
+          notify("error", m);
+          return;
+        }
+        const charged = res.headers.get("X-MV-Charged");
+        notify("info", `${jobs.length}개 모델 비교 시작${charged ? ` · ${charged} 크레딧 사용` : ""}`);
+        setItems(jobs.map((j) => ({ jobId: j.job_id, model: j.model ?? "모델", phase: "polling" as const })));
+        setPhase("running");
+
+        let done = 0;
+        jobs.forEach((j) => {
+          const id = j.job_id;
+          timers.current[id] = setInterval(async () => {
+            try {
+              const jr = await fetch(`/api/marv/jobs/${id}`, { cache: "no-store" });
+              const job = await jr.json();
+              if (job.status === "finished") {
+                clearInterval(timers.current[id]);
+                delete timers.current[id];
+                const r = await fetch(`/api/marv/jobs/${id}/result`);
+                const url = URL.createObjectURL(await r.blob());
+                setItems((prev) => prev?.map((it) => (it.jobId === id ? { ...it, phase: "done", url } : it)) ?? prev);
+                if (++done === jobs.length) notify("success", "모델 비교가 완료됐어요!");
+              } else if (job.status === "failed") {
+                clearInterval(timers.current[id]);
+                delete timers.current[id];
+                setItems((prev) => prev?.map((it) => (it.jobId === id ? { ...it, phase: "error" } : it)) ?? prev);
+                if (++done === jobs.length) notify("success", "모델 비교가 완료됐어요!");
+              }
+            } catch {
+              /* 일시 오류는 다음 폴링에서 재시도 */
+            }
+          }, 4000);
+        });
+      } catch {
+        setPhase("error");
+        setErrMsg("요청 중 오류가 발생했습니다.");
+        notify("error", "요청 중 오류가 발생했습니다.");
+      }
+    },
+    [stop, lab, notify]
+  );
+
+  return { items, phase, errMsg, run };
+}
+
+function CompareGrid({ items, onZoom }: { items: CompareItem[]; onZoom: (url: string) => void }) {
+  return (
+    <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {items.map((it) => (
+        <div key={it.jobId} className="animate-pop border border-ink-line bg-ink-soft">
+          <div className="flex aspect-square items-center justify-center overflow-hidden bg-ink">
+            {it.phase === "done" && it.url ? (
+              <button onClick={() => onZoom(it.url!)} className="h-full w-full">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={it.url} alt={`${it.model} 생성 결과`} className="h-full w-full cursor-zoom-in object-cover" />
+              </button>
+            ) : it.phase === "error" ? (
+              <span className="px-2 text-center text-xs text-red-600">생성 실패</span>
+            ) : (
+              <span className="text-lime">
+                <Spinner />
+              </span>
+            )}
+          </div>
+          <div className="flex items-center justify-between gap-2 px-2.5 py-2">
+            <p className="truncate font-mono text-[10px] text-paper-dim" title={it.model}>
+              {it.model}
+            </p>
+            {it.phase === "done" && it.url && (
+              <a
+                href={it.url}
+                download={`mindvr-${it.model}-${it.jobId.slice(0, 6)}.png`}
+                className="shrink-0 text-[10px] font-semibold text-paper-faint hover:text-lime"
+              >
+                저장
+              </a>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ImagePanel({ lab }: { lab: Lab }) {
   const { state, run } = useJobRunner(lab, "image");
+  const compare = useCompareRunner(lab);
   const [prompt, setPrompt] = useState("밝은 스튜디오에서 카메라를 보고 미소 짓는 한국인 바리스타");
   const [model, setModel] = useState("Z-Image-Turbo");
   const [aspect, setAspect] = useState("1:1");
+  const [zoom, setZoom] = useState<string | null>(null);
 
-  const submit = () => {
+  const submitSingle = () => {
     const f = new FormData();
     f.set("model", model);
     f.set("prompt_ko", prompt);
@@ -442,7 +571,20 @@ function ImagePanel({ lab }: { lab: Lab }) {
     run("/v1/image", f);
   };
 
-  const busy = state.phase === "submitting" || state.phase === "polling";
+  const submitCompare = () => {
+    const f = new FormData();
+    f.set("model", model);
+    f.set("prompt_ko", prompt);
+    f.set("params_json", JSON.stringify({ aspect, compare_models: true }));
+    compare.run(f);
+  };
+
+  const singleBusy = state.phase === "submitting" || state.phase === "polling";
+  const compareBusy = compare.phase === "submitting" || compare.phase === "running";
+  const busy = singleBusy || compareBusy;
+  const compareCost = CREDIT_COSTS.image * 4;
+  const compareBroke = !lab.unlimited && lab.balance < compareCost;
+
   return (
     <div className="space-y-4">
       <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={3} className={inputCls} />
@@ -451,19 +593,61 @@ function ImagePanel({ lab }: { lab: Lab }) {
           <option>Z-Image-Turbo</option>
           <option>Qwen-Image-2512-Lifestyle</option>
           <option>HiDream-O1</option>
+          <option>Ideogram-4</option>
         </select>
         <select value={aspect} onChange={(e) => setAspect(e.target.value)} className={`${inputCls} max-w-[110px]`}>
           {["1:1", "16:9", "9:16", "3:4", "4:3"].map((a) => (
             <option key={a}>{a}</option>
           ))}
         </select>
-        <CostButton service="image" lab={lab} onClick={submit} busy={busy}>
+        <CostButton service="image" lab={lab} onClick={submitSingle} busy={singleBusy}>
           이미지 생성
         </CostButton>
+        <button
+          onClick={submitCompare}
+          disabled={busy || compareBroke}
+          className="inline-flex items-center gap-2 border border-lime px-6 py-3 text-sm font-bold text-lime transition-colors hover:bg-lime hover:text-ink disabled:opacity-50"
+        >
+          {compareBusy && <Spinner className="h-4 w-4" />}
+          {compareBusy ? "비교 생성 중…" : "4개 모델 비교"}
+          {!compareBusy && <span className="font-mono text-xs opacity-70">· {compareCost} CR</span>}
+        </button>
       </div>
+      <p className="text-xs text-paper-faint">
+        * <span className="text-paper-dim">4개 모델 비교</span>는 같은 프롬프트로 4개 AI 모델이 각 1장씩 동시에
+        생성합니다. 마음에 드는 결과를 골라 저장하세요.
+      </p>
+
+      {/* 단일 생성 진행/결과 */}
       <GenerationProgress state={state} service="image" />
       <ResultCard key={state.phase === "done" ? state.jobId : "idle"} state={state} />
       <ErrorLine state={state} />
+
+      {/* 4개 모델 비교 진행/결과 */}
+      {compare.phase === "submitting" && (
+        <div className="mt-5 flex animate-fade items-center gap-3 border border-ink-line bg-ink-soft p-5">
+          <span className="text-lime">
+            <Spinner />
+          </span>
+          <p className="text-sm font-semibold">4개 모델에 동시 요청을 보내는 중…</p>
+        </div>
+      )}
+      {compare.items && <CompareGrid items={compare.items} onZoom={setZoom} />}
+      {compare.phase === "error" && compare.errMsg && (
+        <div className="mt-5 animate-fade border border-red-500/30 bg-red-500/5 p-4">
+          <p className="text-sm font-semibold text-red-600">{compare.errMsg}</p>
+        </div>
+      )}
+
+      {zoom && (
+        <div
+          className="fixed inset-0 z-[70] flex animate-fade items-center justify-center bg-black/85 p-4 sm:p-8"
+          onClick={() => setZoom(null)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={zoom} alt="생성 결과 크게 보기" className="max-h-[92vh] max-w-[92vw] object-contain" />
+        </div>
+      )}
     </div>
   );
 }

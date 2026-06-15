@@ -8,8 +8,14 @@ export default function Footer() {
             마인드브이알 — 한국어 특화 AI 아바타 스튜디오
           </p>
           <a
+            href="tel:1688-0623"
+            className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-paper-dim transition-colors hover:text-lime"
+          >
+            <span className="font-mono tracking-wider">대표전화 1688-0623</span>
+          </a>
+          <a
             href="mailto:mindvridge.official@gmail.com"
-            className="mt-3 inline-block text-sm text-paper-dim transition-colors hover:text-lime"
+            className="mt-1 inline-block text-sm text-paper-dim transition-colors hover:text-lime"
           >
             mindvridge.official@gmail.com
           </a>
@@ -31,6 +37,7 @@ export default function Footer() {
             <span>상호 <span className="text-paper-dim">주식회사 마인드브이알</span></span>
             <span>대표자 <span className="text-paper-dim">이대엽</span></span>
             <span>사업자등록번호 <span className="text-paper-dim">654-86-02376</span></span>
+            <span>대표전화 <span className="text-paper-dim">1688-0623</span></span>
           </div>
           <p className="mt-1 text-xs leading-relaxed text-paper-faint">
             사업장 소재지{" "}
