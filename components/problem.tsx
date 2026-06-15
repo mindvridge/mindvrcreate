@@ -48,7 +48,7 @@ export default function Problem() {
       <Reveal delay={150}>
         <p className="mt-12 max-w-3xl text-lg leading-relaxed text-paper-dim">
           마인드브이알은 셋 다 포기하지 않습니다. 한국어에 최적화된 자체 제작 역량과{" "}
-          <span className="font-semibold text-lime">맞춤 제작 + IP 전부 양도</span>로
+          <span className="font-semibold text-lime">전용 제작 + IP 전부 양도</span>로
           답합니다.
         </p>
       </Reveal>
