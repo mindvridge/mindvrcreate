@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CREDIT_COSTS, type Service } from "@/lib/credits";
+import { CREDIT_COSTS, SERVICE_LABELS, type Service } from "@/lib/credits";
 
 type TabId = Service;
 
@@ -14,46 +14,65 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "avatar", label: "아바타" },
 ];
 
+// 서비스별 예상 소요 안내
+const ESTIMATE: Record<Service, string> = {
+  llm: "보통 몇 초",
+  tts: "보통 10~60초",
+  image: "보통 30초~2분",
+  video: "보통 수 분",
+  avatar: "보통 수 분",
+};
+
+type ToastType = "success" | "error" | "info";
+type Toast = { id: number; type: ToastType; msg: string };
+
 type Me = { name: string; credits: number; unlimited: number };
 
 type Lab = {
   unlimited: boolean;
   balance: number;
   setBalance: (n: number) => void;
+  notify: (type: ToastType, msg: string) => void;
 };
+
+type Kind = "audio" | "image" | "video" | "file";
 
 type JobState =
   | { phase: "idle" }
   | { phase: "submitting" }
   | { phase: "polling"; jobId: string; status: string; seconds: number }
-  | { phase: "done"; jobId: string; kind: "audio" | "image" | "video" | "file"; url: string }
+  | { phase: "done"; jobId: string; kind: Kind; url: string }
   | { phase: "error"; message: string; insufficient?: boolean };
 
-function kindFromContentType(ct: string): "audio" | "image" | "video" | "file" {
+function kindFromContentType(ct: string): Kind {
   if (ct.startsWith("audio/")) return "audio";
   if (ct.startsWith("image/")) return "image";
   if (ct.startsWith("video/")) return "video";
   return "file";
 }
 
-/** 잡 제출 → 폴링 → 결과 URL 확정까지의 공용 러너. 잔액 헤더를 읽어 갱신한다. */
-function useJobRunner(lab: Lab) {
+/* ── 작은 UI 조각 ─────────────────────────────────────── */
+
+function Spinner({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <span
+      className={`inline-block animate-spin rounded-full border-2 border-current border-t-transparent ${className}`}
+      aria-hidden
+    />
+  );
+}
+
+/** 잡 제출 → 폴링 → 결과 URL 확정까지의 공용 러너. 잔액·과금 헤더를 읽고 토스트를 띄운다. */
+function useJobRunner(lab: Lab, service: Service) {
   const [state, setState] = useState<JobState>({ phase: "idle" });
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const notify = lab.notify;
 
   const stop = useCallback(() => {
     if (timer.current) clearInterval(timer.current);
     timer.current = null;
   }, []);
   useEffect(() => stop, [stop]);
-
-  const applyBalanceHeader = useCallback(
-    (res: Response) => {
-      const b = res.headers.get("X-MV-Balance");
-      if (b !== null) lab.setBalance(Number(b));
-    },
-    [lab]
-  );
 
   const run = useCallback(
     async (path: string, form: FormData) => {
@@ -64,16 +83,31 @@ function useJobRunner(lab: Lab) {
           method: "POST",
           body: form,
         });
-        applyBalanceHeader(res);
+        const b = res.headers.get("X-MV-Balance");
+        if (b !== null) lab.setBalance(Number(b));
+
         if (res.status === 402) {
           setState({ phase: "error", message: "크레딧이 부족합니다.", insufficient: true });
+          notify("error", "크레딧이 부족합니다. 충전 후 이용해 주세요.");
           return;
         }
         const json = await res.json();
         if (!res.ok || !json.job_id) {
-          setState({ phase: "error", message: json.detail ?? "잡 생성에 실패했습니다." });
+          const msg = json.detail ?? "요청에 실패했습니다.";
+          setState({ phase: "error", message: msg });
+          notify("error", msg);
           return;
         }
+
+        const charged = res.headers.get("X-MV-Charged");
+        const unlimited = res.headers.get("X-MV-Unlimited") === "1";
+        notify(
+          "info",
+          unlimited || !charged
+            ? `${SERVICE_LABELS[service]} 생성을 시작했어요`
+            : `${SERVICE_LABELS[service]} 생성 시작 · ${charged} 크레딧 사용`
+        );
+
         const jobId: string = json.job_id;
         let seconds = 0;
         setState({ phase: "polling", jobId, status: "queued", seconds });
@@ -82,22 +116,20 @@ function useJobRunner(lab: Lab) {
           seconds += 4;
           try {
             const jr = await fetch(`/api/marv/jobs/${jobId}`, { cache: "no-store" });
-            applyBalanceHeader(jr);
+            const jb = jr.headers.get("X-MV-Balance");
+            if (jb !== null) lab.setBalance(Number(jb));
             const job = await jr.json();
             if (job.status === "finished") {
               stop();
               const r = await fetch(`/api/marv/jobs/${jobId}/result`);
               const ct = r.headers.get("content-type") ?? "";
               const blob = await r.blob();
-              setState({
-                phase: "done",
-                jobId,
-                kind: kindFromContentType(ct),
-                url: URL.createObjectURL(blob),
-              });
+              setState({ phase: "done", jobId, kind: kindFromContentType(ct), url: URL.createObjectURL(blob) });
+              notify("success", `${SERVICE_LABELS[service]} 생성이 완료됐어요!`);
             } else if (job.status === "failed") {
               stop();
-              setState({ phase: "error", message: job.error ?? "생성에 실패했습니다 (크레딧 환불됨)." });
+              setState({ phase: "error", message: "생성에 실패했어요. 크레딧은 환불됐습니다." });
+              notify("error", "생성에 실패했어요. 크레딧은 환불됐습니다.");
             } else {
               setState({ phase: "polling", jobId, status: job.status, seconds });
             }
@@ -107,9 +139,10 @@ function useJobRunner(lab: Lab) {
         }, 4000);
       } catch {
         setState({ phase: "error", message: "요청 중 오류가 발생했습니다." });
+        notify("error", "요청 중 오류가 발생했습니다.");
       }
     },
-    [stop, applyBalanceHeader]
+    [stop, lab, notify, service]
   );
 
   return { state, run };
@@ -122,13 +155,13 @@ function CostButton({
   service,
   lab,
   onClick,
-  disabled,
+  busy,
   children,
 }: {
   service: Service;
   lab: Lab;
   onClick: () => void;
-  disabled?: boolean;
+  busy?: boolean;
   children: React.ReactNode;
 }) {
   const cost = CREDIT_COSTS[service];
@@ -136,29 +169,133 @@ function CostButton({
   return (
     <button
       onClick={onClick}
-      disabled={disabled || broke}
-      className="bg-lime px-6 py-3 text-sm font-bold text-ink transition-colors hover:bg-lime-deep disabled:opacity-50"
+      disabled={busy || broke}
+      className="inline-flex items-center gap-2 bg-lime px-6 py-3 text-sm font-bold text-ink transition-colors hover:bg-lime-deep disabled:opacity-50"
     >
-      {children}
-      <span className="ml-2 font-mono text-xs opacity-70">· {cost} CR</span>
+      {busy && <Spinner className="h-4 w-4" />}
+      {busy ? "생성 중…" : children}
+      {!busy && <span className="font-mono text-xs opacity-70">· {cost} CR</span>}
     </button>
   );
 }
 
-function StatusLine({ state }: { state: JobState }) {
-  if (state.phase === "idle") return null;
-  if (state.phase === "submitting")
-    return <p className="font-mono text-xs text-paper-faint">SUBMITTING…</p>;
-  if (state.phase === "polling")
-    return (
-      <p className="flex items-center gap-2 font-mono text-xs text-paper-faint">
-        <span className="live-dot h-2 w-2 rounded-full bg-lime" />
-        {state.status.toUpperCase()} · {state.seconds}s · JOB {state.jobId.slice(0, 8)} — GPU
-        대기열에서 순차 처리됩니다
-      </p>
-    );
-  if (state.phase === "error")
-    return (
+/** 친절한 진행 인디케이터 (대기/생성 + 진행바 + 타이머 + 예상시간) */
+function GenerationProgress({ state, service }: { state: JobState; service: Service }) {
+  if (state.phase !== "submitting" && state.phase !== "polling") return null;
+  const elapsed = state.phase === "polling" ? state.seconds : 0;
+  const mm = String(Math.floor(elapsed / 60)).padStart(2, "0");
+  const ss = String(elapsed % 60).padStart(2, "0");
+  const queued = state.phase === "polling" && state.status === "queued";
+  const title =
+    state.phase === "submitting"
+      ? "요청을 보내는 중…"
+      : queued
+        ? "대기열에서 순서를 기다리고 있어요"
+        : "AI가 열심히 만들고 있어요";
+  const sub = queued
+    ? "GPU가 비는 대로 자동으로 시작됩니다"
+    : `${ESTIMATE[service]} 걸려요 · 페이지를 열어 두세요`;
+
+  return (
+    <div className="mt-5 animate-fade border border-ink-line bg-ink-soft p-5">
+      <div className="flex items-center gap-3">
+        <span className="text-lime">
+          <Spinner />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">{title}</p>
+          <p className="mt-0.5 text-xs text-paper-faint">{sub}</p>
+        </div>
+        <span className="font-mono text-sm tabular-nums text-paper-dim">
+          {mm}:{ss}
+        </span>
+      </div>
+      <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-ink-line">
+        <div
+          className="h-full w-1/3 rounded-full bg-lime"
+          style={{ animation: "mv-slide 1.3s ease-in-out infinite" }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ResultCard({ state }: { state: JobState }) {
+  const [zoom, setZoom] = useState(false);
+  if (state.phase !== "done") return null;
+
+  const ext = state.kind === "audio" ? "wav" : state.kind === "video" ? "mp4" : state.kind === "image" ? "png" : "bin";
+  const fileName = `mindvr-${state.jobId.slice(0, 8)}.${ext}`;
+  const zoomable = state.kind === "image" || state.kind === "video";
+
+  return (
+    <div className="mt-5 animate-pop border border-ink-line bg-ink-soft p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <p className="flex items-center gap-1.5 text-sm font-bold text-lime">
+          <span className="text-base leading-none">✓</span> 생성 완료
+        </p>
+        <div className="flex items-center gap-3">
+          {zoomable && (
+            <button onClick={() => setZoom(true)} className="text-xs font-semibold text-paper-dim hover:text-lime">
+              크게 보기
+            </button>
+          )}
+          <a href={state.url} download={fileName} className="text-xs font-semibold text-paper-dim hover:text-lime">
+            다운로드
+          </a>
+        </div>
+      </div>
+
+      {state.kind === "audio" && <audio controls src={state.url} className="w-full" />}
+      {state.kind === "image" && (
+        <button onClick={() => setZoom(true)} className="block w-full">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={state.url} alt="생성 결과" className="max-h-[420px] w-auto cursor-zoom-in" />
+        </button>
+      )}
+      {state.kind === "video" && (
+        <video controls autoPlay loop src={state.url} className="max-h-[420px] w-auto" />
+      )}
+      {state.kind === "file" && (
+        <a href={state.url} download={fileName} className="font-semibold text-lime underline">
+          결과 파일 다운로드
+        </a>
+      )}
+
+      {zoom && zoomable && (
+        <div
+          className="fixed inset-0 z-[70] flex animate-fade items-center justify-center bg-black/85 p-4 sm:p-8"
+          onClick={() => setZoom(false)}
+        >
+          {state.kind === "image" ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={state.url} alt="생성 결과 크게 보기" className="max-h-[92vh] max-w-[92vw] object-contain" />
+          ) : (
+            <video
+              controls
+              autoPlay
+              loop
+              src={state.url}
+              className="max-h-[92vh] max-w-[92vw]"
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
+          <button
+            onClick={() => setZoom(false)}
+            className="absolute right-4 top-4 border border-white/30 bg-black/50 px-3 py-1.5 font-mono text-xs tracking-wider text-white hover:border-lime hover:text-lime"
+          >
+            닫기 ✕
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ErrorLine({ state }: { state: JobState }) {
+  if (state.phase !== "error") return null;
+  return (
+    <div className="mt-5 animate-fade border border-red-500/30 bg-red-500/5 p-4">
       <p className="text-sm font-semibold text-red-600">
         {state.message}{" "}
         {state.insufficient && (
@@ -167,28 +304,6 @@ function StatusLine({ state }: { state: JobState }) {
           </Link>
         )}
       </p>
-    );
-  return null;
-}
-
-function ResultView({ state }: { state: JobState }) {
-  if (state.phase !== "done") return null;
-  return (
-    <div className="mt-5 border border-ink-line bg-ink-soft p-4">
-      <p className="mb-3 font-mono text-[10px] tracking-[0.2em] text-paper-faint">
-        RESULT · JOB {state.jobId.slice(0, 8)}
-      </p>
-      {state.kind === "audio" && <audio controls src={state.url} className="w-full" />}
-      {state.kind === "image" && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={state.url} alt="생성 결과" className="max-h-[480px] w-auto" />
-      )}
-      {state.kind === "video" && <video controls src={state.url} className="max-h-[480px] w-auto" />}
-      {state.kind === "file" && (
-        <a href={state.url} download className="font-semibold text-lime underline">
-          결과 파일 다운로드
-        </a>
-      )}
     </div>
   );
 }
@@ -196,7 +311,7 @@ function ResultView({ state }: { state: JobState }) {
 /* ── 탭별 패널 ─────────────────────────────────────────── */
 
 function TtsPanel({ lab }: { lab: Lab }) {
-  const { state, run } = useJobRunner(lab);
+  const { state, run } = useJobRunner(lab, "tts");
   const [voices, setVoices] = useState<{ id: string; name: string }[]>([]);
   const [voiceId, setVoiceId] = useState("");
   const [text, setText] = useState("안녕하세요, 마인드브이알입니다. 이 음성은 방금 만들어졌습니다.");
@@ -230,12 +345,13 @@ function TtsPanel({ lab }: { lab: Lab }) {
             </option>
           ))}
         </select>
-        <CostButton service="tts" lab={lab} onClick={submit} disabled={busy}>
+        <CostButton service="tts" lab={lab} onClick={submit} busy={busy}>
           음성 생성
         </CostButton>
       </div>
-      <StatusLine state={state} />
-      <ResultView state={state} />
+      <GenerationProgress state={state} service="tts" />
+      <ResultCard key={state.phase === "done" ? state.jobId : "idle"} state={state} />
+      <ErrorLine state={state} />
     </div>
   );
 }
@@ -258,15 +374,17 @@ function LlmPanel({ lab }: { lab: Lab }) {
       if (b !== null) lab.setBalance(Number(b));
       if (res.status === 402) {
         setError({ message: "크레딧이 부족합니다.", insufficient: true });
+        lab.notify("error", "크레딧이 부족합니다.");
         return;
       }
       const json = await res.json();
-      if (!res.ok) setError({ message: json.detail ?? "요청 실패" });
-      else
-        setReply(
-          json.message_to_user ??
-            (json.job_id ? `생성 잡이 시작되었습니다 (JOB ${json.job_id.slice(0, 8)} · ${json.tab ?? ""})` : JSON.stringify(json))
-        );
+      if (!res.ok) {
+        setError({ message: json.detail ?? "요청 실패" });
+        lab.notify("error", json.detail ?? "요청 실패");
+      } else {
+        setReply(json.message_to_user ?? (json.job_id ? "생성 잡이 시작되었습니다." : JSON.stringify(json)));
+        lab.notify("success", "응답이 도착했어요!");
+      }
     } catch {
       setError({ message: "요청 중 오류가 발생했습니다." });
     } finally {
@@ -274,31 +392,34 @@ function LlmPanel({ lab }: { lab: Lab }) {
     }
   };
 
-  const cost = CREDIT_COSTS.llm;
-  const broke = !lab.unlimited && lab.balance < cost;
   return (
     <div className="space-y-4">
       <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3} className={inputCls} />
       <button
         onClick={submit}
-        disabled={busy || broke}
-        className="bg-lime px-6 py-3 text-sm font-bold text-ink transition-colors hover:bg-lime-deep disabled:opacity-50"
+        disabled={busy || (!lab.unlimited && lab.balance < CREDIT_COSTS.llm)}
+        className="inline-flex items-center gap-2 bg-lime px-6 py-3 text-sm font-bold text-ink transition-colors hover:bg-lime-deep disabled:opacity-50"
       >
+        {busy && <Spinner className="h-4 w-4" />}
         {busy ? "응답 생성 중…" : "보내기"}
-        <span className="ml-2 font-mono text-xs opacity-70">· {cost} CR</span>
+        {!busy && <span className="font-mono text-xs opacity-70">· {CREDIT_COSTS.llm} CR</span>}
       </button>
       {error && (
-        <p className="text-sm font-semibold text-red-600">
-          {error.message}{" "}
-          {error.insufficient && (
-            <Link href="/account" className="ml-1 text-lime underline">
-              충전 안내
-            </Link>
-          )}
-        </p>
+        <div className="animate-fade border border-red-500/30 bg-red-500/5 p-4">
+          <p className="text-sm font-semibold text-red-600">
+            {error.message}{" "}
+            {error.insufficient && (
+              <Link href="/account" className="ml-1 text-lime underline">
+                충전 안내
+              </Link>
+            )}
+          </p>
+        </div>
       )}
       {reply && (
-        <div className="border border-ink-line bg-ink-soft p-5 text-sm leading-relaxed text-paper-dim">{reply}</div>
+        <div className="animate-pop border border-ink-line bg-ink-soft p-5 text-sm leading-relaxed text-paper-dim">
+          {reply}
+        </div>
       )}
       <p className="text-xs text-paper-faint">
         * 마브 오케스트레이터에 직접 연결됩니다. &ldquo;~만들어줘&rdquo;라고 하면 실제 생성 잡이 시작될 수 있습니다.
@@ -308,7 +429,7 @@ function LlmPanel({ lab }: { lab: Lab }) {
 }
 
 function ImagePanel({ lab }: { lab: Lab }) {
-  const { state, run } = useJobRunner(lab);
+  const { state, run } = useJobRunner(lab, "image");
   const [prompt, setPrompt] = useState("밝은 스튜디오에서 카메라를 보고 미소 짓는 한국인 바리스타");
   const [model, setModel] = useState("Z-Image-Turbo");
   const [aspect, setAspect] = useState("1:1");
@@ -336,18 +457,19 @@ function ImagePanel({ lab }: { lab: Lab }) {
             <option key={a}>{a}</option>
           ))}
         </select>
-        <CostButton service="image" lab={lab} onClick={submit} disabled={busy}>
+        <CostButton service="image" lab={lab} onClick={submit} busy={busy}>
           이미지 생성
         </CostButton>
       </div>
-      <StatusLine state={state} />
-      <ResultView state={state} />
+      <GenerationProgress state={state} service="image" />
+      <ResultCard key={state.phase === "done" ? state.jobId : "idle"} state={state} />
+      <ErrorLine state={state} />
     </div>
   );
 }
 
 function VideoPanel({ lab }: { lab: Lab }) {
-  const { state, run } = useJobRunner(lab);
+  const { state, run } = useJobRunner(lab, "video");
   const [prompt, setPrompt] = useState("햇살 좋은 한강공원에서 강아지와 산책하는 사람, 시네마틱");
 
   const submit = () => {
@@ -362,12 +484,12 @@ function VideoPanel({ lab }: { lab: Lab }) {
   return (
     <div className="space-y-4">
       <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={3} className={inputCls} />
-      <CostButton service="video" lab={lab} onClick={submit} disabled={busy}>
+      <CostButton service="video" lab={lab} onClick={submit} busy={busy}>
         영상 생성 (5초)
       </CostButton>
-      <p className="text-xs text-paper-faint">* 영상 생성은 수 분이 걸릴 수 있습니다. 페이지를 열어 두세요.</p>
-      <StatusLine state={state} />
-      <ResultView state={state} />
+      <GenerationProgress state={state} service="video" />
+      <ResultCard key={state.phase === "done" ? state.jobId : "idle"} state={state} />
+      <ErrorLine state={state} />
     </div>
   );
 }
@@ -381,7 +503,7 @@ const AVATAR_SAMPLES = [
 ];
 
 function AvatarPanel({ lab }: { lab: Lab }) {
-  const { state, run } = useJobRunner(lab);
+  const { state, run } = useJobRunner(lab, "avatar");
   const [text, setText] = useState("안녕하세요! 이 영상은 테스트 페이지에서 방금 만들어졌습니다.");
   const [sample, setSample] = useState(AVATAR_SAMPLES[0].src);
   const [file, setFile] = useState<File | null>(null);
@@ -391,6 +513,7 @@ function AvatarPanel({ lab }: { lab: Lab }) {
     f.set("model", "daVinci-MagiHuman");
     f.set("prompt_ko", text);
     f.set("duration_s", "6");
+    f.set("orientation", "portrait");
     if (file) {
       f.set("ref_image", file);
     } else {
@@ -414,7 +537,7 @@ function AvatarPanel({ lab }: { lab: Lab }) {
                 setSample(s.src);
                 setFile(null);
               }}
-              className={`overflow-hidden border-2 ${!file && sample === s.src ? "border-lime" : "border-ink-line"}`}
+              className={`overflow-hidden border-2 transition-colors ${!file && sample === s.src ? "border-lime" : "border-ink-line"}`}
               title={s.label}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -427,12 +550,42 @@ function AvatarPanel({ lab }: { lab: Lab }) {
           <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="text-xs" />
         </label>
       </div>
-      <CostButton service="avatar" lab={lab} onClick={submit} disabled={busy}>
+      <CostButton service="avatar" lab={lab} onClick={submit} busy={busy}>
         말하는 아바타 생성 (6초)
       </CostButton>
-      <p className="text-xs text-paper-faint">* 아바타 영상은 수 분이 걸릴 수 있습니다. 페이지를 열어 두세요.</p>
-      <StatusLine state={state} />
-      <ResultView state={state} />
+      <GenerationProgress state={state} service="avatar" />
+      <ResultCard key={state.phase === "done" ? state.jobId : "idle"} state={state} />
+      <ErrorLine state={state} />
+    </div>
+  );
+}
+
+/* ── 토스트 ───────────────────────────────────────────── */
+
+function Toasts({ toasts }: { toasts: Toast[] }) {
+  return (
+    <div className="pointer-events-none fixed bottom-5 right-5 z-[80] flex w-[min(92vw,340px)] flex-col gap-2">
+      {toasts.map((t) => (
+        <div
+          key={t.id}
+          className={`animate-pop pointer-events-auto flex items-start gap-2.5 border bg-ink p-4 shadow-lg ${
+            t.type === "success"
+              ? "border-lime/50"
+              : t.type === "error"
+                ? "border-red-500/50"
+                : "border-ink-line"
+          }`}
+        >
+          <span
+            className={`mt-0.5 text-sm ${
+              t.type === "success" ? "text-lime" : t.type === "error" ? "text-red-600" : "text-paper-faint"
+            }`}
+          >
+            {t.type === "success" ? "✓" : t.type === "error" ? "!" : "•"}
+          </span>
+          <p className="text-sm leading-relaxed text-paper">{t.msg}</p>
+        </div>
+      ))}
     </div>
   );
 }
@@ -444,6 +597,13 @@ export default function TestLab() {
   const [me, setMe] = useState<Me | null | undefined>(undefined);
   const [balance, setBalance] = useState(0);
   const [queueDepth, setQueueDepth] = useState<number | null>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const notify = useCallback((type: ToastType, msg: string) => {
+    const id = Date.now() + Math.random();
+    setToasts((list) => [...list, { id, type, msg }]);
+    setTimeout(() => setToasts((list) => list.filter((t) => t.id !== id)), 4200);
+  }, []);
 
   useEffect(() => {
     fetch("/api/auth/me", { cache: "no-store" })
@@ -467,7 +627,12 @@ export default function TestLab() {
     return () => clearInterval(id);
   }, [me]);
 
-  if (me === undefined) return <p className="font-mono text-sm text-paper-faint">로딩 중…</p>;
+  if (me === undefined)
+    return (
+      <p className="flex items-center gap-2 font-mono text-sm text-paper-faint">
+        <Spinner className="h-4 w-4" /> 불러오는 중…
+      </p>
+    );
 
   if (!me) {
     return (
@@ -489,7 +654,7 @@ export default function TestLab() {
   }
 
   const unlimited = me.unlimited === 1;
-  const lab: Lab = { unlimited, balance, setBalance };
+  const lab: Lab = { unlimited, balance, setBalance, notify };
 
   return (
     <div>
@@ -525,18 +690,32 @@ export default function TestLab() {
             </button>
           ))}
         </div>
-        <p className="font-mono text-[10px] tracking-[0.2em] text-paper-faint">
-          QUEUE {queueDepth ?? "–"} · SERIAL GPU
+        <p className="flex items-center gap-1.5 font-mono text-[10px] tracking-[0.2em] text-paper-faint">
+          <span className="live-dot h-1.5 w-1.5 rounded-full bg-lime" />
+          대기열 {queueDepth ?? "–"}
         </p>
       </div>
 
+      {/* 모든 패널을 마운트 유지 → 탭을 바꿔도 생성이 계속 진행됨 */}
       <div className="pt-8">
-        {tab === "tts" && <TtsPanel lab={lab} />}
-        {tab === "llm" && <LlmPanel lab={lab} />}
-        {tab === "image" && <ImagePanel lab={lab} />}
-        {tab === "video" && <VideoPanel lab={lab} />}
-        {tab === "avatar" && <AvatarPanel lab={lab} />}
+        <div className={tab === "tts" ? "" : "hidden"}>
+          <TtsPanel lab={lab} />
+        </div>
+        <div className={tab === "llm" ? "" : "hidden"}>
+          <LlmPanel lab={lab} />
+        </div>
+        <div className={tab === "image" ? "" : "hidden"}>
+          <ImagePanel lab={lab} />
+        </div>
+        <div className={tab === "video" ? "" : "hidden"}>
+          <VideoPanel lab={lab} />
+        </div>
+        <div className={tab === "avatar" ? "" : "hidden"}>
+          <AvatarPanel lab={lab} />
+        </div>
       </div>
+
+      <Toasts toasts={toasts} />
     </div>
   );
 }
