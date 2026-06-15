@@ -33,9 +33,15 @@ export default function Footer() {
             <span>사업자등록번호 <span className="text-paper-dim">654-86-02376</span></span>
           </div>
           <p className="mt-1 text-xs leading-relaxed text-paper-faint">
-            주소{" "}
+            사업장 소재지{" "}
             <span className="text-paper-dim">
               충청남도 천안시 서북구 천안천4길 32 (와촌동, 천안역세권 지역전략사업지원 행복주택)
+            </span>
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-paper-faint">
+            오피스{" "}
+            <span className="text-paper-dim">
+              서울특별시 중구 칠패로 36 3층 (연세대학교 봉래빌딩)
             </span>
           </p>
         </div>
