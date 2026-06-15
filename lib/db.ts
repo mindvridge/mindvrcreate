@@ -87,12 +87,20 @@ const SCHEMA = `
   CREATE INDEX IF NOT EXISTS idx_redemption_uid ON coupon_redemptions(user_id);
 `;
 
-/** 스키마를 1회만 생성 (전역 프로미스 캐시) */
+/**
+ * 스키마를 1회만 생성 (전역 프로미스 캐시).
+ * 실패(예: 부팅 시 DB 미준비) 시 캐시를 해제해 다음 호출에서 재시도한다.
+ * → 앱이 Postgres보다 먼저 떠도 DB가 올라오면 자동 복구.
+ */
 export function ensureSchema(): Promise<void> {
   if (!g.__mvSchema) {
     g.__mvSchema = getPool()
       .query(SCHEMA)
-      .then(() => undefined);
+      .then(() => undefined)
+      .catch((e) => {
+        g.__mvSchema = undefined;
+        throw e;
+      });
   }
   return g.__mvSchema;
 }

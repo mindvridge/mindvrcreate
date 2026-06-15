@@ -1,3 +1,4 @@
+import DemoCta from "./demo-cta";
 import HeroStage from "./hero-stage";
 
 // 마브 API(daVinci-MagiHuman)로 제작한 한국어 토킹헤드 데모.
@@ -22,12 +23,9 @@ export default function Hero() {
           </p>
 
           <div className="mt-9 flex flex-wrap items-center gap-4">
-            <a
-              href="#demo-request"
-              className="bg-lime px-6 py-3.5 text-base font-bold text-ink transition-colors hover:bg-lime-deep"
-            >
+            <DemoCta className="bg-lime px-6 py-3.5 text-base font-bold text-ink transition-colors hover:bg-lime-deep">
               무료 아바타 데모 받기
-            </a>
+            </DemoCta>
             <a
               href="#process"
               className="border border-ink-line px-6 py-3.5 text-base font-semibold text-paper-dim transition-colors hover:border-lime hover:text-lime"
