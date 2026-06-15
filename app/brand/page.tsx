@@ -14,8 +14,10 @@ export const metadata: Metadata = {
 const doings = [
   { tag: "AI HUMAN", title: "AI 아바타 · 디지털휴먼", body: "캐릭터·브랜드·페르소나에 맞는 전용 디지털휴먼을 설계하고 제작합니다." },
   { tag: "VOICE", title: "한국어 음성(TTS)", body: "한국어의 입모양·억양·호흡에 맞춰 자연스럽게 말하는 음성을 만듭니다." },
-  { tag: "MEDIA", title: "영상 · 이미지 생성", body: "아바타 영상은 물론 홍보 영상·이미지까지 한 곳에서 제작합니다." },
-  { tag: "PERSONA", title: "페르소나 설계", body: "상담사·면접관·인플루언서·디지털트윈 등 용도에 맞는 인물을 구성합니다." },
+  { tag: "IMAGE", title: "이미지 생성", body: "인물·제품·콘셉트 이미지를 생성합니다. API로도 제공합니다." },
+  { tag: "VIDEO", title: "영상 생성", body: "아바타 영상은 물론 홍보·콘텐츠 영상까지 제작합니다." },
+  { tag: "MUSIC", title: "음악 생성", body: "분위기·장르에 맞는 배경 음악을 생성합니다. API로도 제공합니다." },
+  { tag: "LLM", title: "대화형 LLM", body: "한국어 대화·생성을 처리하는 언어모델을 API로 제공합니다." },
 ];
 
 const products = [
@@ -23,16 +25,19 @@ const products = [
     tag: "MAV",
     name: "메타버스 상담 MAV",
     body: "아바타 기반 익명 심리상담 플랫폼. AI 감정 분석으로 청소년 상담 현장에서 운영되고 있습니다.",
+    url: "https://mindvridge.com/",
   },
   {
     tag: "MINDPREP",
     name: "AI 면접훈련 마인드프랩",
     body: "AI 아바타 면접관과의 모의 면접으로 면접 불안을 줄이고, 표정·음성·답변 분석 리포트를 제공합니다.",
+    url: "http://mindprep.co.kr/",
   },
   {
     tag: "VR MEDITATION",
     name: "마음챙김 VR 명상",
     body: "자연 환경의 몰입형 VR로 명상과 이완을 훈련하는 프로그램입니다.",
+    url: "https://mindvr.co.kr/meditation",
   },
 ];
 
@@ -91,9 +96,14 @@ export default function BrandPage() {
 
         {/* 하는 일 */}
         <section className="mx-auto max-w-6xl px-5 py-20 sm:py-24">
-          <SectionHeader index="02" label="WHAT WE DO" title="우리가 만드는 것." />
+          <SectionHeader
+            index="02"
+            label="WHAT WE DO"
+            title="우리가 만드는 것."
+            lede="음성·이미지·영상·음악·LLM까지, AI 휴먼 제작에 필요한 생성 기술을 직접 만들고 API로 제공합니다."
+          />
           <Reveal delay={80}>
-            <div className="mt-12 grid gap-px border border-ink-line bg-ink-line sm:grid-cols-2">
+            <div className="mt-12 grid gap-px border border-ink-line bg-ink-line sm:grid-cols-2 lg:grid-cols-3">
               {doings.map((d) => (
                 <div key={d.tag} className="bg-ink p-8">
                   <p className="font-mono text-[11px] tracking-[0.2em] text-paper-faint">{d.tag}</p>
@@ -117,16 +127,25 @@ export default function BrandPage() {
             <Reveal delay={80}>
               <div className="mt-12 grid gap-px border border-ink-line bg-ink-line sm:grid-cols-3">
                 {products.map((p) => (
-                  <div key={p.tag} className="flex h-full flex-col bg-ink p-8">
+                  <a
+                    key={p.tag}
+                    href={p.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex h-full flex-col bg-ink p-8 transition-colors hover:bg-ink-raise"
+                  >
                     <div className="flex items-center justify-between">
                       <p className="font-mono text-[11px] tracking-[0.2em] text-paper-faint">{p.tag}</p>
                       <span className="border border-lime/40 px-2 py-0.5 font-mono text-[10px] tracking-widest text-lime">
                         운영 중
                       </span>
                     </div>
-                    <h3 className="mt-4 text-xl font-bold">{p.name}</h3>
-                    <p className="mt-3 leading-relaxed text-paper-dim">{p.body}</p>
-                  </div>
+                    <h3 className="mt-4 text-xl font-bold transition-colors group-hover:text-lime">{p.name}</h3>
+                    <p className="mt-3 flex-1 leading-relaxed text-paper-dim">{p.body}</p>
+                    <span className="mt-5 font-mono text-xs tracking-wider text-paper-faint transition-colors group-hover:text-lime">
+                      바로가기 →
+                    </span>
+                  </a>
                 ))}
               </div>
             </Reveal>
