@@ -86,8 +86,22 @@ export async function markSettled(jobId: string): Promise<void> {
   await q("UPDATE credit_logs SET settled = 1 WHERE job_id = $1 AND type = 'spend' AND settled = 0", [jobId]);
 }
 
-/** 비동기 잡 실패 환불 (job_id 기준, settled 플래그로 멱등) */
-export function refundForFailedJobByJobId(jobId: string): Promise<number | null> {
+/** 사용자가 해당 잡(job_id)에 과금된 적이 있는지 — 취소 권한 확인용 */
+export async function ownsJob(userId: string, jobId: string): Promise<boolean> {
+  const r = await q(
+    "SELECT 1 FROM credit_logs WHERE job_id = $1 AND user_id = $2 AND type = 'spend' LIMIT 1",
+    [jobId, userId]
+  );
+  return (r.rowCount ?? 0) > 0;
+}
+
+/** 비동기 잡 실패/취소 환불 (job_id 기준, settled 플래그로 멱등) */
+export function refundForFailedJobByJobId(
+  jobId: string,
+  reason: "failed" | "cancelled" = "failed"
+): Promise<number | null> {
+  const noteUnlimited = reason === "cancelled" ? "생성 취소(무제한)" : "생성 실패(무제한)";
+  const noteRefund = reason === "cancelled" ? "생성 취소 환불" : "생성 실패 환불";
   return tx(async (c): Promise<number | null> => {
     const spend = (
       await c.query(
@@ -109,8 +123,8 @@ export function refundForFailedJobByJobId(jobId: string): Promise<number | null>
       };
       await c.query(
         `INSERT INTO credit_logs (user_id, type, service, amount, unlimited, balance_after, job_id, settled, note, created_at)
-         VALUES ($1,'refund',$2,0,1,$3,$4,1,'생성 실패(무제한)',$5)`,
-        [spend.user_id, spend.service, u.credits, jobId, now]
+         VALUES ($1,'refund',$2,0,1,$3,$4,1,$5,$6)`,
+        [spend.user_id, spend.service, u.credits, jobId, noteUnlimited, now]
       );
       return u.credits;
     }
@@ -123,8 +137,8 @@ export function refundForFailedJobByJobId(jobId: string): Promise<number | null>
     const balance = upd.rows[0].credits as number;
     await c.query(
       `INSERT INTO credit_logs (user_id, type, service, amount, unlimited, balance_after, job_id, settled, note, created_at)
-       VALUES ($1,'refund',$2,$3,0,$4,$5,1,'생성 실패 환불',$6)`,
-      [spend.user_id, spend.service, refund, balance, jobId, now]
+       VALUES ($1,'refund',$2,$3,0,$4,$5,1,$6,$7)`,
+      [spend.user_id, spend.service, refund, balance, jobId, noteRefund, now]
     );
     return balance;
   });

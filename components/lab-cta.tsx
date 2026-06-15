@@ -17,7 +17,7 @@ export default function LabCta() {
               직접 체험
             </p>
             <span className="hidden font-mono text-[10px] tracking-[0.25em] text-paper-faint/60 sm:block">
-              로그인 시 100 크레딧 무료
+              로그인 시 300 크레딧 무료
             </span>
           </div>
 
@@ -28,7 +28,7 @@ export default function LabCta() {
           </h2>
           <p className="mt-5 max-w-2xl leading-relaxed text-paper-dim">
             설명 대신 결과로 확인하세요. 마인드브이알 생성 스튜디오에 실시간 연결된
-            테스트 랩에서 5가지를 직접 만들어 볼 수 있습니다. 회원가입하면 100 크레딧을
+            테스트 랩에서 5가지를 직접 만들어 볼 수 있습니다. 회원가입하면 300 크레딧을
             무료로 드립니다.
           </p>
         </Reveal>
@@ -60,7 +60,7 @@ export default function LabCta() {
               href="/signup"
               className="border border-ink-line px-6 py-3.5 text-base font-semibold text-paper-dim transition-colors hover:border-lime hover:text-lime"
             >
-              회원가입 · 100 크레딧
+              회원가입 · 300 크레딧
             </Link>
           </div>
         </Reveal>

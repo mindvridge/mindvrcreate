@@ -84,7 +84,7 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
         disabled={busy}
         className="w-full bg-lime px-6 py-3.5 text-base font-bold text-ink transition-colors hover:bg-lime-deep disabled:opacity-50"
       >
-        {busy ? "처리 중…" : isSignup ? "가입하고 100 크레딧 받기" : "로그인"}
+        {busy ? "처리 중…" : isSignup ? "가입하고 300 크레딧 받기" : "로그인"}
       </button>
 
       <p className="text-center text-sm text-paper-faint">

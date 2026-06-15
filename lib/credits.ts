@@ -7,7 +7,7 @@
  * - 영상: fal.ai Wan 2.5 $0.05/초 (5초 ≈ $0.25), Runway/Kling 더 높음
  * - 아바타(토킹헤드): HeyGen Avatar IV ~ $1/분(프리미엄), 립싱크+음성 결합으로 가장 비쌈
  *
- * 기준 단위: 1 크레딧 ≈ ₩10. 신규 가입 시 100 크레딧(₩1,000 상당) 무료 제공.
+ * 기준 단위: 1 크레딧 ≈ ₩10. 신규 가입 시 300 크레딧(₩3,000 상당) 무료 제공.
  */
 
 export type Service = "llm" | "tts" | "image" | "video" | "avatar" | "music";
@@ -30,7 +30,7 @@ export const SERVICE_LABELS: Record<Service, string> = {
   music: "음악 생성",
 };
 
-export const SIGNUP_BONUS = 100;
+export const SIGNUP_BONUS = 300;
 export const WON_PER_CREDIT = 10;
 
 /** 충전 패키지 — 결제 연동 전까지 표시·관리자 수동 충전 기준 */

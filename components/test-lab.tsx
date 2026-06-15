@@ -127,17 +127,85 @@ function ImageDrop({
   );
 }
 
-/** 잡 제출 → 폴링 → 결과 URL 확정까지의 공용 러너. 잔액·과금 헤더를 읽고 토스트를 띄운다. */
+/**
+ * 잡 제출 → 폴링 → 결과 확정까지의 공용 러너.
+ * 진행 중 잡을 localStorage에 저장해, 다른 페이지로 이동했다 돌아와도 자동으로 폴링을 재개한다.
+ * cancel() 호출 시 서버에서 잡을 취소하고 차감된 크레딧을 환불한다.
+ */
 function useJobRunner(lab: Lab, service: Service) {
   const [state, setState] = useState<JobState>({ phase: "idle" });
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const jobIdRef = useRef<string | null>(null);
   const notify = lab.notify;
+  const storeKey = `mv_job_${service}`;
 
   const stop = useCallback(() => {
     if (timer.current) clearInterval(timer.current);
     timer.current = null;
   }, []);
+
+  const clearStore = useCallback(() => {
+    jobIdRef.current = null;
+    try {
+      localStorage.removeItem(storeKey);
+    } catch {
+      /* SSR/프라이빗 모드 */
+    }
+  }, [storeKey]);
+
+  const poll = useCallback(
+    (jobId: string, startedAt: number) => {
+      stop();
+      jobIdRef.current = jobId;
+      setState({ phase: "polling", jobId, status: "queued", seconds: Math.floor((Date.now() - startedAt) / 1000) });
+      timer.current = setInterval(async () => {
+        const seconds = Math.floor((Date.now() - startedAt) / 1000);
+        try {
+          const jr = await fetch(`/api/marv/jobs/${jobId}`, { cache: "no-store" });
+          const jb = jr.headers.get("X-MV-Balance");
+          if (jb !== null) lab.setBalance(Number(jb));
+          const job = await jr.json();
+          if (job.status === "finished") {
+            stop();
+            clearStore();
+            const r = await fetch(`/api/marv/jobs/${jobId}/result`);
+            const ct = r.headers.get("content-type") ?? "";
+            const blob = await r.blob();
+            setState({ phase: "done", jobId, kind: kindFromContentType(ct), url: URL.createObjectURL(blob) });
+            notify("success", `${SERVICE_LABELS[service]} 생성이 완료됐어요!`);
+          } else if (job.status === "failed") {
+            stop();
+            clearStore();
+            setState({ phase: "error", message: "생성에 실패했어요. 크레딧은 환불됐습니다." });
+            notify("error", "생성에 실패했어요. 크레딧은 환불됐습니다.");
+          } else {
+            setState({ phase: "polling", jobId, status: job.status, seconds });
+          }
+        } catch {
+          /* 일시 오류는 다음 폴링에서 재시도 */
+        }
+      }, 4000);
+    },
+    [stop, clearStore, lab, notify, service]
+  );
+
+  // 언마운트 시 타이머만 정리(스토리지는 유지 → 재방문 시 재개)
   useEffect(() => stop, [stop]);
+
+  // 마운트 시 진행 중이던 잡이 있으면 폴링 재개
+  useEffect(() => {
+    let saved: { jobId: string; startedAt: number } | null = null;
+    try {
+      const raw = localStorage.getItem(storeKey);
+      if (raw) saved = JSON.parse(raw);
+    } catch {
+      /* noop */
+    }
+    if (!saved?.jobId) return;
+    const t = setTimeout(() => poll(saved!.jobId, saved!.startedAt), 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const run = useCallback(
     async (path: string, form: FormData) => {
@@ -174,43 +242,38 @@ function useJobRunner(lab: Lab, service: Service) {
         );
 
         const jobId: string = json.job_id;
-        let seconds = 0;
-        setState({ phase: "polling", jobId, status: "queued", seconds });
-
-        timer.current = setInterval(async () => {
-          seconds += 4;
-          try {
-            const jr = await fetch(`/api/marv/jobs/${jobId}`, { cache: "no-store" });
-            const jb = jr.headers.get("X-MV-Balance");
-            if (jb !== null) lab.setBalance(Number(jb));
-            const job = await jr.json();
-            if (job.status === "finished") {
-              stop();
-              const r = await fetch(`/api/marv/jobs/${jobId}/result`);
-              const ct = r.headers.get("content-type") ?? "";
-              const blob = await r.blob();
-              setState({ phase: "done", jobId, kind: kindFromContentType(ct), url: URL.createObjectURL(blob) });
-              notify("success", `${SERVICE_LABELS[service]} 생성이 완료됐어요!`);
-            } else if (job.status === "failed") {
-              stop();
-              setState({ phase: "error", message: "생성에 실패했어요. 크레딧은 환불됐습니다." });
-              notify("error", "생성에 실패했어요. 크레딧은 환불됐습니다.");
-            } else {
-              setState({ phase: "polling", jobId, status: job.status, seconds });
-            }
-          } catch {
-            /* 일시 오류는 다음 폴링에서 재시도 */
-          }
-        }, 4000);
+        const startedAt = Date.now();
+        try {
+          localStorage.setItem(storeKey, JSON.stringify({ jobId, startedAt }));
+        } catch {
+          /* noop */
+        }
+        poll(jobId, startedAt);
       } catch {
         setState({ phase: "error", message: "요청 중 오류가 발생했습니다." });
         notify("error", "요청 중 오류가 발생했습니다.");
       }
     },
-    [stop, lab, notify, service]
+    [stop, lab, notify, service, poll, storeKey]
   );
 
-  return { state, run };
+  const cancel = useCallback(async () => {
+    const jobId = jobIdRef.current;
+    stop();
+    clearStore();
+    setState({ phase: "idle" });
+    if (!jobId) return;
+    try {
+      const res = await fetch(`/api/marv/jobs/${jobId}/cancel`, { method: "POST" });
+      const b = res.headers.get("X-MV-Balance");
+      if (b !== null) lab.setBalance(Number(b));
+      notify("info", `${SERVICE_LABELS[service]} 생성을 취소했어요. 크레딧을 환불했습니다.`);
+    } catch {
+      notify("error", "취소 요청 중 오류가 발생했습니다.");
+    }
+  }, [stop, clearStore, lab, notify, service]);
+
+  return { state, run, cancel };
 }
 
 const inputCls =
@@ -244,8 +307,16 @@ function CostButton({
   );
 }
 
-/** 친절한 진행 인디케이터 (대기/생성 + 진행바 + 타이머 + 예상시간) */
-function GenerationProgress({ state, service }: { state: JobState; service: Service }) {
+/** 친절한 진행 인디케이터 (대기/생성 + 진행바 + 타이머 + 예상시간 + 취소) */
+function GenerationProgress({
+  state,
+  service,
+  onCancel,
+}: {
+  state: JobState;
+  service: Service;
+  onCancel?: () => void;
+}) {
   if (state.phase !== "submitting" && state.phase !== "polling") return null;
   const elapsed = state.phase === "polling" ? state.seconds : 0;
   const mm = String(Math.floor(elapsed / 60)).padStart(2, "0");
@@ -259,7 +330,7 @@ function GenerationProgress({ state, service }: { state: JobState; service: Serv
         : "AI가 열심히 만들고 있어요";
   const sub = queued
     ? "GPU가 비는 대로 자동으로 시작됩니다"
-    : `${ESTIMATE[service]} 걸려요 · 페이지를 열어 두세요`;
+    : `${ESTIMATE[service]} 걸려요 · 다른 페이지로 이동해도 계속 진행됩니다`;
 
   return (
     <div className="mt-5 animate-fade border border-ink-line bg-ink-soft p-5">
@@ -274,6 +345,14 @@ function GenerationProgress({ state, service }: { state: JobState; service: Serv
         <span className="font-mono text-sm tabular-nums text-paper-dim">
           {mm}:{ss}
         </span>
+        {onCancel && state.phase === "polling" && (
+          <button
+            onClick={onCancel}
+            className="shrink-0 border border-ink-line px-3 py-1.5 text-xs font-semibold text-paper-dim transition-colors hover:border-red-500 hover:text-red-600"
+          >
+            취소
+          </button>
+        )}
       </div>
       <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-ink-line">
         <div
@@ -376,7 +455,7 @@ function ErrorLine({ state }: { state: JobState }) {
 /* ── 탭별 패널 ─────────────────────────────────────────── */
 
 function TtsPanel({ lab }: { lab: Lab }) {
-  const { state, run } = useJobRunner(lab, "tts");
+  const { state, run, cancel } = useJobRunner(lab, "tts");
   const [voices, setVoices] = useState<{ id: string; name: string }[]>([]);
   const [voiceId, setVoiceId] = useState("");
   const [text, setText] = useState("안녕하세요, 마인드브이알입니다. 이 음성은 방금 만들어졌습니다.");
@@ -414,7 +493,7 @@ function TtsPanel({ lab }: { lab: Lab }) {
           음성 생성
         </CostButton>
       </div>
-      <GenerationProgress state={state} service="tts" />
+      <GenerationProgress state={state} service="tts" onCancel={cancel} />
       <ResultCard key={state.phase === "done" ? state.jobId : "idle"} state={state} />
       <ErrorLine state={state} />
     </div>
@@ -598,12 +677,78 @@ function useCompareRunner(lab: Lab) {
   const [errMsg, setErrMsg] = useState("");
   const timers = useRef<Record<string, ReturnType<typeof setInterval>>>({});
   const notify = lab.notify;
+  const storeKey = "mv_compare_image";
 
   const stop = useCallback(() => {
     Object.values(timers.current).forEach((t) => clearInterval(t));
     timers.current = {};
   }, []);
+
+  const clearStore = useCallback(() => {
+    try {
+      localStorage.removeItem(storeKey);
+    } catch {
+      /* noop */
+    }
+  }, []);
+
+  const pollJobs = useCallback(
+    (jobs: { job_id: string; model?: string }[]) => {
+      stop();
+      setItems(jobs.map((j) => ({ jobId: j.job_id, model: j.model ?? "모델", phase: "polling" as const })));
+      setPhase("running");
+      let done = 0;
+      const finishOne = () => {
+        if (++done >= jobs.length) {
+          clearStore();
+          notify("success", "이미지 생성이 완료됐어요!");
+        }
+      };
+      jobs.forEach((j) => {
+        const id = j.job_id;
+        timers.current[id] = setInterval(async () => {
+          try {
+            const jr = await fetch(`/api/marv/jobs/${id}`, { cache: "no-store" });
+            const job = await jr.json();
+            if (job.status === "finished") {
+              clearInterval(timers.current[id]);
+              delete timers.current[id];
+              const r = await fetch(`/api/marv/jobs/${id}/result`);
+              const url = URL.createObjectURL(await r.blob());
+              setItems((prev) => prev?.map((it) => (it.jobId === id ? { ...it, phase: "done", url } : it)) ?? prev);
+              finishOne();
+            } else if (job.status === "failed") {
+              clearInterval(timers.current[id]);
+              delete timers.current[id];
+              setItems((prev) => prev?.map((it) => (it.jobId === id ? { ...it, phase: "error" } : it)) ?? prev);
+              finishOne();
+            }
+          } catch {
+            /* 일시 오류는 다음 폴링에서 재시도 */
+          }
+        }, 4000);
+      });
+    },
+    [stop, clearStore, notify]
+  );
+
   useEffect(() => stop, [stop]);
+
+  // 마운트 시 진행 중이던 4장 생성 재개
+  useEffect(() => {
+    let saved: { job_id: string; model?: string }[] | null = null;
+    try {
+      const raw = localStorage.getItem(storeKey);
+      if (raw) saved = JSON.parse(raw);
+    } catch {
+      /* noop */
+    }
+    if (!saved || !saved.length) return;
+    const arr = saved;
+    const t = setTimeout(() => pollJobs(arr), 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const run = useCallback(
     async (form: FormData) => {
@@ -637,41 +782,19 @@ function useCompareRunner(lab: Lab) {
         }
         const charged = res.headers.get("X-MV-Charged");
         notify("info", `이미지 ${jobs.length}장 생성 시작${charged ? ` · ${charged} 크레딧 사용` : ""}`);
-        setItems(jobs.map((j) => ({ jobId: j.job_id, model: j.model ?? "모델", phase: "polling" as const })));
-        setPhase("running");
-
-        let done = 0;
-        jobs.forEach((j) => {
-          const id = j.job_id;
-          timers.current[id] = setInterval(async () => {
-            try {
-              const jr = await fetch(`/api/marv/jobs/${id}`, { cache: "no-store" });
-              const job = await jr.json();
-              if (job.status === "finished") {
-                clearInterval(timers.current[id]);
-                delete timers.current[id];
-                const r = await fetch(`/api/marv/jobs/${id}/result`);
-                const url = URL.createObjectURL(await r.blob());
-                setItems((prev) => prev?.map((it) => (it.jobId === id ? { ...it, phase: "done", url } : it)) ?? prev);
-                if (++done === jobs.length) notify("success", "이미지 4장 생성이 완료됐어요!");
-              } else if (job.status === "failed") {
-                clearInterval(timers.current[id]);
-                delete timers.current[id];
-                setItems((prev) => prev?.map((it) => (it.jobId === id ? { ...it, phase: "error" } : it)) ?? prev);
-                if (++done === jobs.length) notify("success", "이미지 4장 생성이 완료됐어요!");
-              }
-            } catch {
-              /* 일시 오류는 다음 폴링에서 재시도 */
-            }
-          }, 4000);
-        });
+        try {
+          localStorage.setItem(storeKey, JSON.stringify(jobs.map((j) => ({ job_id: j.job_id, model: j.model }))));
+        } catch {
+          /* noop */
+        }
+        pollJobs(jobs);
       } catch {
         setPhase("error");
         setErrMsg("요청 중 오류가 발생했습니다.");
         notify("error", "요청 중 오류가 발생했습니다.");
       }
     },
-    [stop, lab, notify]
+    [stop, lab, notify, pollJobs]
   );
 
   return { items, phase, errMsg, run };
@@ -799,7 +922,7 @@ function ImagePanel({ lab }: { lab: Lab }) {
 }
 
 function VideoPanel({ lab }: { lab: Lab }) {
-  const { state, run } = useJobRunner(lab, "video");
+  const { state, run, cancel } = useJobRunner(lab, "video");
   const [prompt, setPrompt] = useState("햇살 좋은 한강공원에서 강아지와 산책하는 사람, 시네마틱");
   const [file, setFile] = useState<File | null>(null);
   const fileUrl = useObjectUrl(file);
@@ -829,7 +952,7 @@ function VideoPanel({ lab }: { lab: Lab }) {
       <CostButton service="video" lab={lab} onClick={submit} busy={busy}>
         {file ? "이미지로 영상 생성 (5초)" : "영상 생성 (5초)"}
       </CostButton>
-      <GenerationProgress state={state} service="video" />
+      <GenerationProgress state={state} service="video" onCancel={cancel} />
       <ResultCard key={state.phase === "done" ? state.jobId : "idle"} state={state} />
       <ErrorLine state={state} />
     </div>
@@ -845,7 +968,7 @@ const AVATAR_SAMPLES = [
 ];
 
 function AvatarPanel({ lab }: { lab: Lab }) {
-  const { state, run } = useJobRunner(lab, "avatar");
+  const { state, run, cancel } = useJobRunner(lab, "avatar");
   const [text, setText] = useState("안녕하세요! 이 영상은 테스트 페이지에서 방금 만들어졌습니다.");
   const [sample, setSample] = useState(AVATAR_SAMPLES[0].src);
   const [file, setFile] = useState<File | null>(null);
@@ -896,7 +1019,7 @@ function AvatarPanel({ lab }: { lab: Lab }) {
       <CostButton service="avatar" lab={lab} onClick={submit} busy={busy}>
         말하는 아바타 생성 (6초)
       </CostButton>
-      <GenerationProgress state={state} service="avatar" />
+      <GenerationProgress state={state} service="avatar" onCancel={cancel} />
       <ResultCard key={state.phase === "done" ? state.jobId : "idle"} state={state} />
       <ErrorLine state={state} />
     </div>
@@ -907,7 +1030,7 @@ const MUSIC_GENRES = ["자동", "어쿠스틱", "팝", "발라드", "재즈", "L
 const MUSIC_MOODS = ["자동", "밝은", "차분한", "감성적인", "신나는", "웅장한", "슬픈", "몽환적인"];
 
 function MusicPanel({ lab }: { lab: Lab }) {
-  const { state, run } = useJobRunner(lab, "music");
+  const { state, run, cancel } = useJobRunner(lab, "music");
   const [prompt, setPrompt] = useState("잔잔한 카페에서 어울리는 따뜻한 어쿠스틱 음악");
   const [genre, setGenre] = useState("자동");
   const [mood, setMood] = useState("자동");
@@ -992,7 +1115,7 @@ function MusicPanel({ lab }: { lab: Lab }) {
       <CostButton service="music" lab={lab} onClick={submit} busy={busy}>
         음악 생성
       </CostButton>
-      <GenerationProgress state={state} service="music" />
+      <GenerationProgress state={state} service="music" onCancel={cancel} />
       <ResultCard key={state.phase === "done" ? state.jobId : "idle"} state={state} />
       <ErrorLine state={state} />
     </div>
@@ -1078,11 +1201,11 @@ export default function TestLab() {
       <div className="border border-ink-line bg-ink-soft p-10 text-center">
         <p className="text-lg font-bold">로그인이 필요합니다</p>
         <p className="mt-2 text-sm text-paper-dim">
-          회원가입하면 100 크레딧을 무료로 드립니다. 음성·이미지·영상·아바타를 직접 만들어 보세요.
+          회원가입하면 300 크레딧을 무료로 드립니다. 음성·이미지·영상·아바타를 직접 만들어 보세요.
         </p>
         <div className="mt-6 flex justify-center gap-3">
           <Link href="/signup" className="bg-lime px-6 py-3 text-sm font-bold text-ink hover:bg-lime-deep">
-            회원가입 (100 크레딧)
+            회원가입 (300 크레딧)
           </Link>
           <Link href="/login" className="border border-ink-line px-6 py-3 text-sm font-semibold text-paper-dim hover:border-lime">
             로그인

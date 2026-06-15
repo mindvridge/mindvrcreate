@@ -190,7 +190,7 @@ export default function BrandPage() {
             </h2>
             <p className="mx-auto mt-5 max-w-xl leading-relaxed text-paper-dim">
               테스트 랩에서 음성·대화·이미지·영상·아바타를 바로 만들어 볼 수 있습니다.
-              회원가입하면 100 크레딧을 무료로 드립니다.
+              회원가입하면 300 크레딧을 무료로 드립니다.
             </p>
             <div className="mt-8 flex flex-wrap justify-center gap-4">
               <Link href="/test" className="bg-lime px-6 py-3.5 text-base font-bold text-ink transition-colors hover:bg-lime-deep">

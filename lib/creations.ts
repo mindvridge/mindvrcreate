@@ -60,6 +60,11 @@ export async function listCreations(userId: string, limit = 60): Promise<Creatio
   return r.rows;
 }
 
+/** 취소된 잡의 생성물 기록 제거 — 내 갤러리에서 사라지도록 */
+export async function deleteCreationByJob(userId: string, jobId: string): Promise<void> {
+  await q("DELETE FROM creations WHERE user_id = $1 AND job_id = $2", [userId, jobId]);
+}
+
 /** 소유권 확인용 — 내 생성물의 job_id 조회 */
 export async function getCreationJobId(userId: string, id: number): Promise<string | null> {
   const r = await q<{ job_id: string }>(
