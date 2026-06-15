@@ -20,12 +20,6 @@ const stamps = [
     detail: "AI 페르소나 면접 코칭",
     body: "이미 실사용자가 쓰는 제품을 직접 운영하며 다듬어 온 제작 역량으로 만듭니다.",
   },
-  {
-    label: "OWNERSHIP",
-    title: "캐릭터 IP 100% 고객 귀속",
-    detail: "계약서 명시",
-    body: "제작된 디지털휴먼과 영상의 권리는 전부 고객의 것입니다. 플랫폼에 종속되지 않습니다.",
-  },
 ];
 
 export default function TrustDetail() {
@@ -35,7 +29,7 @@ export default function TrustDetail() {
 
       {/* 등기부 톤의 헤어라인 그리드 */}
       <Reveal delay={80}>
-        <div className="mt-14 grid border border-ink-line bg-ink-line gap-px sm:grid-cols-2">
+        <div className="mt-14 grid border border-ink-line bg-ink-line gap-px sm:grid-cols-3">
           {stamps.map((s) => (
             <div key={s.label} className="bg-ink-soft p-7 sm:p-9">
               <p className="font-mono text-[11px] tracking-[0.25em] text-paper-faint">{s.label}</p>
