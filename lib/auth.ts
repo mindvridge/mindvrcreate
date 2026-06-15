@@ -135,10 +135,15 @@ async function userForToken(token: string | undefined): Promise<User | undefined
   return getUserById(row.user_id);
 }
 
-/** 서버 컴포넌트·라우트 핸들러 공통: 현재 로그인 사용자 (쿠키 기반) */
+/** 서버 컴포넌트·라우트 핸들러 공통: 현재 로그인 사용자 (쿠키 기반).
+ *  DB 오류(예: Postgres 미연결) 시 throw 대신 undefined → 사이트가 로그아웃 상태로 동작. */
 export async function getCurrentUser(): Promise<User | undefined> {
-  const store = await cookies();
-  return userForToken(store.get(SESSION_COOKIE)?.value);
+  try {
+    const store = await cookies();
+    return await userForToken(store.get(SESSION_COOKIE)?.value);
+  } catch {
+    return undefined;
+  }
 }
 
 export function sessionCookieOptions(maxAgeDays = SESSION_DAYS) {
