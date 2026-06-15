@@ -555,75 +555,62 @@ function CompareGrid({ items, onZoom }: { items: CompareItem[]; onZoom: (url: st
   );
 }
 
+// 국적·국가·해외 지명이 명시되지 않은 프롬프트는 자동으로 한국인·한국 배경으로 보정한다.
+const NATIONALITY_RE =
+  /한국|국내|미국|일본|중국|대만|유럽|서양|동양|아시아|외국|이국|글로벌|흑인|백인|아프리카|인도|베트남|태국|필리핀|인도네시아|말레이|러시아|프랑스|영국|독일|이탈리아|스페인|네덜란드|스웨덴|멕시코|브라질|아르헨|라틴|히스패닉|아랍|중동|튀르키예|터키|이집트|몽골|뉴욕|파리|도쿄|런던|베이징|상하이|홍콩|방콕|싱가포르|두바이|로마|베를린|시드니|korean|american|japanese|chinese|western|european|african|asian/i;
+const PERSON_RE =
+  /사람|인물|여성|남성|여자|남자|아이|어린이|소녀|소년|학생|직원|모델|바리스타|의사|간호사|교사|선생|상담|면접|회사원|할머니|할아버지|엄마|아빠|부모|커플|친구|가족|인플루언서|크리에이터|점원|요리사|셰프|선수|아기|노인|청년|중년|얼굴|초상|남녀/;
+
+function localizePrompt(p: string): string {
+  const t = p.trim();
+  if (!t || NATIONALITY_RE.test(t)) return t;
+  const extra = PERSON_RE.test(t) ? "한국인, 한국 배경" : "한국 배경";
+  return `${t}, ${extra}`;
+}
+
 function ImagePanel({ lab }: { lab: Lab }) {
-  const { state, run } = useJobRunner(lab, "image");
   const compare = useCompareRunner(lab);
-  const [prompt, setPrompt] = useState("밝은 스튜디오에서 카메라를 보고 미소 짓는 한국인 바리스타");
-  const [model, setModel] = useState("Z-Image-Turbo");
+  const [prompt, setPrompt] = useState("밝은 스튜디오에서 카메라를 보고 미소 짓는 바리스타");
   const [aspect, setAspect] = useState("1:1");
   const [zoom, setZoom] = useState<string | null>(null);
 
-  const submitSingle = () => {
+  const submit = () => {
     const f = new FormData();
-    f.set("model", model);
-    f.set("prompt_ko", prompt);
-    f.set("params_json", JSON.stringify({ aspect }));
-    run("/v1/image", f);
-  };
-
-  const submitCompare = () => {
-    const f = new FormData();
-    f.set("model", model);
-    f.set("prompt_ko", prompt);
+    f.set("model", "Z-Image-Turbo"); // compare_models 사용 시에도 필수 필드
+    f.set("prompt_ko", localizePrompt(prompt));
     f.set("params_json", JSON.stringify({ aspect, compare_models: true }));
     compare.run(f);
   };
 
-  const singleBusy = state.phase === "submitting" || state.phase === "polling";
-  const compareBusy = compare.phase === "submitting" || compare.phase === "running";
-  const busy = singleBusy || compareBusy;
-  const compareCost = CREDIT_COSTS.image * 4;
-  const compareBroke = !lab.unlimited && lab.balance < compareCost;
+  const busy = compare.phase === "submitting" || compare.phase === "running";
+  const cost = CREDIT_COSTS.image * 4;
+  const broke = !lab.unlimited && lab.balance < cost;
 
   return (
     <div className="space-y-4">
       <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={3} className={inputCls} />
       <div className="flex flex-wrap items-center gap-3">
-        <select value={model} onChange={(e) => setModel(e.target.value)} className={`${inputCls} max-w-xs`}>
-          <option>Z-Image-Turbo</option>
-          <option>Qwen-Image-2512-Lifestyle</option>
-          <option>HiDream-O1</option>
-          <option>Ideogram-4</option>
-        </select>
         <select value={aspect} onChange={(e) => setAspect(e.target.value)} className={`${inputCls} max-w-[110px]`}>
           {["1:1", "16:9", "9:16", "3:4", "4:3"].map((a) => (
             <option key={a}>{a}</option>
           ))}
         </select>
-        <CostButton service="image" lab={lab} onClick={submitSingle} busy={singleBusy}>
-          이미지 생성
-        </CostButton>
         <button
-          onClick={submitCompare}
-          disabled={busy || compareBroke}
-          className="inline-flex items-center gap-2 border border-lime px-6 py-3 text-sm font-bold text-lime transition-colors hover:bg-lime hover:text-ink disabled:opacity-50"
+          onClick={submit}
+          disabled={busy || broke}
+          className="inline-flex items-center gap-2 bg-lime px-6 py-3 text-sm font-bold text-ink transition-colors hover:bg-lime-deep disabled:opacity-50"
         >
-          {compareBusy && <Spinner className="h-4 w-4" />}
-          {compareBusy ? "비교 생성 중…" : "4개 모델 비교"}
-          {!compareBusy && <span className="font-mono text-xs opacity-70">· {compareCost} CR</span>}
+          {busy && <Spinner className="h-4 w-4" />}
+          {busy ? "생성 중…" : "이미지 4장 생성"}
+          {!busy && <span className="font-mono text-xs opacity-70">· {cost} CR</span>}
         </button>
       </div>
       <p className="text-xs text-paper-faint">
-        * <span className="text-paper-dim">4개 모델 비교</span>는 같은 프롬프트로 4개 AI 모델이 각 1장씩 동시에
-        생성합니다. 마음에 드는 결과를 골라 저장하세요.
+        * 한 번에 <span className="text-paper-dim">4개 AI 모델이 각 1장씩</span> 생성합니다. 마음에 드는 결과를 골라
+        저장하세요. 국적을 따로 적지 않으면 <span className="text-paper-dim">한국인·한국 배경</span>으로 자동 생성됩니다.
       </p>
 
-      {/* 단일 생성 진행/결과 */}
-      <GenerationProgress state={state} service="image" />
-      <ResultCard key={state.phase === "done" ? state.jobId : "idle"} state={state} />
-      <ErrorLine state={state} />
-
-      {/* 4개 모델 비교 진행/결과 */}
+      {/* 4장 동시 생성 진행/결과 */}
       {compare.phase === "submitting" && (
         <div className="mt-5 flex animate-fade items-center gap-3 border border-ink-line bg-ink-soft p-5">
           <span className="text-lime">
