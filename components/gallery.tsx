@@ -37,7 +37,7 @@ const personas = [
 export default function Gallery() {
   return (
     <section id="demos" className="border-t border-ink-line bg-ink-soft/60">
-      <div className="mx-auto max-w-6xl px-5 pt-16 pb-24 sm:pt-[120px] sm:pb-32">
+      <div className="mx-auto max-w-6xl px-5 pt-16 pb-24 sm:pt-[140px] sm:pb-32">
         <SectionHeader
           index="01"
           label="AI HUMANS"
