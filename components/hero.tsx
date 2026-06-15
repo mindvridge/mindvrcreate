@@ -5,7 +5,7 @@ const HERO_VIDEO_SRC: string | undefined = "/hero-demo.mp4";
 
 export default function Hero() {
   return (
-    <section id="top" className="relative flex min-h-screen flex-col justify-center pt-24 pb-16">
+    <section id="top" className="relative flex flex-col pt-28 pb-14 sm:pt-32 sm:pb-16">
       <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-5 lg:grid-cols-[1.05fr_1fr]">
         <div>
           <p className="mb-5 font-mono text-xs tracking-[0.25em] text-paper-faint">
