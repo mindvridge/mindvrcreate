@@ -52,6 +52,7 @@ export default function PersonaCard({
         <video
           ref={videoRef}
           src={videoSrc}
+          poster={img}
           loop
           playsInline
           preload="metadata"
