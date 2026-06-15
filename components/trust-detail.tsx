@@ -25,7 +25,7 @@ const stamps = [
 export default function TrustDetail() {
   return (
     <section className="mx-auto max-w-6xl px-5 py-24 sm:py-32">
-      <SectionHeader index="07" label="EVIDENCE" title="과장 대신, 번호로 말합니다." />
+      <SectionHeader index="08" label="EVIDENCE" title="과장 대신, 번호로 말합니다." />
 
       {/* 등기부 톤의 헤어라인 그리드 */}
       <Reveal delay={80}>

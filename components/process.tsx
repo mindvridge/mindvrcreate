@@ -27,7 +27,7 @@ const steps = [
 export default function Process() {
   return (
     <section id="process" className="mx-auto max-w-6xl px-5 py-24 sm:py-32">
-      <SectionHeader index="05" label="HOW IT WORKS" title="대본에서 완성 영상까지, 4단계." />
+      <SectionHeader index="06" label="HOW IT WORKS" title="대본에서 완성 영상까지, 4단계." />
 
       <ol className="mt-14 grid gap-x-10 gap-y-12 md:grid-cols-2 lg:grid-cols-4">
         {steps.map((s, i) => (

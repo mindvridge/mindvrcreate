@@ -27,7 +27,7 @@ export default function Faq() {
   return (
     <section id="faq" className="border-t border-ink-line bg-ink-soft/40">
       <div className="mx-auto max-w-4xl px-5 py-24 sm:py-32">
-        <SectionHeader index="08" label="FAQ" title="자주 묻는 질문" />
+        <SectionHeader index="09" label="FAQ" title="자주 묻는 질문" />
 
         <div className="mt-12 divide-y divide-ink-line border-y border-ink-line">
           {faqs.map((f, i) => (

@@ -39,7 +39,7 @@ export default function Gallery() {
     <section id="demos" className="border-t border-ink-line bg-ink-soft/60">
       <div className="mx-auto max-w-6xl px-5 pt-16 pb-24 sm:pt-24 sm:pb-32">
         <SectionHeader
-          index="01"
+          index="02"
           label="AI HUMANS"
           title="아래 인물은 전부, 실존하지 않습니다."
           lede={

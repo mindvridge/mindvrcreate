@@ -7,6 +7,7 @@ import LabCta from "@/components/lab-cta";
 import Pricing from "@/components/pricing";
 import Problem from "@/components/problem";
 import Process from "@/components/process";
+import RealtimeAvatar from "@/components/realtime-avatar";
 import Segments from "@/components/segments";
 import StickyCta from "@/components/sticky-cta";
 import TrustDetail from "@/components/trust-detail";
@@ -18,6 +19,7 @@ export default function Home() {
       <Header />
       <main className="flex-1">
         <Hero />
+        <RealtimeAvatar />
         <Gallery />
         <Problem />
         <Values />

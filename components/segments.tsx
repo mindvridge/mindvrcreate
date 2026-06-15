@@ -37,7 +37,7 @@ export default function Segments() {
   return (
     <section id="usecases" className="mx-auto max-w-6xl px-5 py-24 sm:py-32">
       <SectionHeader
-        index="04"
+        index="05"
         label="USE CASES"
         title={
           <>

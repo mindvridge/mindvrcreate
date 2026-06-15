@@ -37,7 +37,7 @@ export default function Pricing() {
     <section id="pricing" className="border-t border-ink-line bg-ink-soft/40">
       <div className="mx-auto max-w-6xl px-5 py-24 sm:py-32">
         <SectionHeader
-          index="06"
+          index="07"
           label="PRICING"
           title="월 구독 없이, 쓴 만큼만."
           lede="직접 제작하기 때문에 가능한 구조입니다. 무료 데모로 품질을 확인한 뒤, 원화 기준 물량·프로젝트 단위로만 비용이 발생합니다."

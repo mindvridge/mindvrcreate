@@ -33,7 +33,7 @@ export default function Values() {
     <section id="value" className="border-t border-ink-line bg-ink-soft/40">
       <div className="mx-auto max-w-6xl px-5 py-24 sm:py-32">
         <SectionHeader
-          index="03"
+          index="04"
           label="WHY MINDVR"
           title={
             <>
