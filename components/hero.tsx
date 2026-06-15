@@ -24,7 +24,7 @@ export default function Hero() {
 
           <div className="mt-9 flex flex-wrap items-center gap-4">
             <DemoCta className="bg-lime px-6 py-3.5 text-base font-bold text-ink transition-colors hover:bg-lime-deep">
-              무료 아바타 데모 받기
+              무료 테스트 해보기
             </DemoCta>
             <a
               href="#process"
