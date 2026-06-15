@@ -421,35 +421,57 @@ function TtsPanel({ lab }: { lab: Lab }) {
   );
 }
 
-function LlmPanel({ lab }: { lab: Lab }) {
-  const [message, setMessage] = useState("마인드브이알을 한 문장으로 소개해줘.");
-  const [busy, setBusy] = useState(false);
-  const [reply, setReply] = useState<string | null>(null);
-  const [error, setError] = useState<{ message: string; insufficient?: boolean } | null>(null);
+type ChatMsg = { role: "user" | "assistant"; content: string };
 
-  const submit = async () => {
+const CHAT_EXAMPLES = [
+  "마인드브이알을 한 문장으로 소개해줘.",
+  "AI 휴먼으로 뭘 만들 수 있어?",
+  "30대 한국 여성 이미지 만들어줘",
+];
+
+function LlmPanel({ lab }: { lab: Lab }) {
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<{ message: string; insufficient?: boolean } | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages, busy]);
+
+  const broke = !lab.unlimited && lab.balance < CREDIT_COSTS.llm;
+
+  const send = async (text: string) => {
+    const msg = text.trim();
+    if (!msg || busy) return;
+    const history = messages.map((m) => ({ role: m.role, content: m.content }));
+    setMessages((m) => [...m, { role: "user", content: msg }]);
+    setInput("");
     setBusy(true);
-    setReply(null);
     setError(null);
     try {
       const f = new FormData();
-      f.set("message", message);
+      f.set("message", msg);
+      f.set("history", JSON.stringify(history));
       const res = await fetch("/api/marv/submit?path=%2Fv1%2Fchat", { method: "POST", body: f });
       const b = res.headers.get("X-MV-Balance");
       if (b !== null) lab.setBalance(Number(b));
       if (res.status === 402) {
         setError({ message: "크레딧이 부족합니다.", insufficient: true });
-        lab.notify("error", "크레딧이 부족합니다.");
+        lab.notify("error", "크레딧이 부족합니다. 충전 후 이용해 주세요.");
         return;
       }
       const json = await res.json();
       if (!res.ok) {
-        setError({ message: json.detail ?? "요청 실패" });
-        lab.notify("error", json.detail ?? "요청 실패");
-      } else {
-        setReply(json.message_to_user ?? (json.job_id ? "생성 잡이 시작되었습니다." : JSON.stringify(json)));
-        lab.notify("success", "응답이 도착했어요!");
+        setError({ message: json.detail ?? "요청에 실패했습니다." });
+        lab.notify("error", json.detail ?? "요청에 실패했습니다.");
+        return;
       }
+      const reply: string =
+        json.message_to_user ?? (json.job_id ? "생성을 시작했어요. 잠시만 기다려 주세요." : "응답을 받지 못했습니다.");
+      setMessages((m) => [...m, { role: "assistant", content: reply }]);
     } catch {
       setError({ message: "요청 중 오류가 발생했습니다." });
     } finally {
@@ -457,18 +479,77 @@ function LlmPanel({ lab }: { lab: Lab }) {
     }
   };
 
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send(input);
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3} className={inputCls} />
-      <button
-        onClick={submit}
-        disabled={busy || (!lab.unlimited && lab.balance < CREDIT_COSTS.llm)}
-        className="inline-flex items-center gap-2 bg-lime px-6 py-3 text-sm font-bold text-ink transition-colors hover:bg-lime-deep disabled:opacity-50"
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="font-mono text-[11px] tracking-[0.2em] text-paper-faint">대화형 AI · 메시지당 {CREDIT_COSTS.llm} CR</p>
+        {messages.length > 0 && (
+          <button
+            onClick={() => {
+              setMessages([]);
+              setError(null);
+            }}
+            className="text-xs font-semibold text-paper-faint hover:text-lime"
+          >
+            대화 지우기
+          </button>
+        )}
+      </div>
+
+      {/* 대화 영역 */}
+      <div
+        ref={scrollRef}
+        className="h-[400px] space-y-3 overflow-y-auto border border-ink-line bg-ink-soft/40 p-4"
       >
-        {busy && <Spinner className="h-4 w-4" />}
-        {busy ? "응답 생성 중…" : "보내기"}
-        {!busy && <span className="font-mono text-xs opacity-70">· {CREDIT_COSTS.llm} CR</span>}
-      </button>
+        {messages.length === 0 && !busy ? (
+          <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
+            <p className="text-sm text-paper-faint">무엇이든 물어보세요. 대화 맥락을 기억합니다.</p>
+            <div className="flex flex-wrap justify-center gap-2">
+              {CHAT_EXAMPLES.map((ex) => (
+                <button
+                  key={ex}
+                  onClick={() => send(ex)}
+                  className="border border-ink-line bg-ink px-3 py-1.5 text-xs text-paper-dim transition-colors hover:border-lime hover:text-lime"
+                >
+                  {ex}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
+            {messages.map((m, i) => (
+              <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div
+                  className={`max-w-[80%] whitespace-pre-wrap px-4 py-2.5 text-sm leading-relaxed animate-pop ${
+                    m.role === "user"
+                      ? "bg-lime text-ink"
+                      : "border border-ink-line bg-ink text-paper-dim"
+                  }`}
+                >
+                  {m.content}
+                </div>
+              </div>
+            ))}
+            {busy && (
+              <div className="flex justify-start">
+                <div className="inline-flex items-center gap-2 border border-ink-line bg-ink px-4 py-2.5 text-sm text-paper-faint">
+                  <Spinner className="h-4 w-4" />
+                  입력 중…
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
       {error && (
         <div className="animate-fade border border-red-500/30 bg-red-500/5 p-4">
           <p className="text-sm font-semibold text-red-600">
@@ -481,13 +562,28 @@ function LlmPanel({ lab }: { lab: Lab }) {
           </p>
         </div>
       )}
-      {reply && (
-        <div className="animate-pop border border-ink-line bg-ink-soft p-5 text-sm leading-relaxed text-paper-dim">
-          {reply}
-        </div>
-      )}
+
+      {/* 입력 */}
+      <div className="flex items-end gap-2">
+        <textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={onKeyDown}
+          rows={1}
+          placeholder={broke ? "크레딧이 부족합니다" : "메시지를 입력하세요 (Enter 전송 · Shift+Enter 줄바꿈)"}
+          disabled={broke}
+          className={`${inputCls} max-h-32 min-h-[48px] flex-1 resize-none`}
+        />
+        <button
+          onClick={() => send(input)}
+          disabled={busy || broke || !input.trim()}
+          className="inline-flex h-[48px] items-center gap-2 bg-lime px-6 text-sm font-bold text-ink transition-colors hover:bg-lime-deep disabled:opacity-50"
+        >
+          {busy ? <Spinner className="h-4 w-4" /> : "보내기"}
+        </button>
+      </div>
       <p className="text-xs text-paper-faint">
-        * 마브 오케스트레이터에 직접 연결됩니다. &ldquo;~만들어줘&rdquo;라고 하면 실제 생성 잡이 시작될 수 있습니다.
+        * &ldquo;~만들어줘&rdquo;라고 하면 실제 생성 잡이 시작될 수 있습니다. 결과물은 내 갤러리에서 확인하세요.
       </p>
     </div>
   );
