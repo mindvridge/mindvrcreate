@@ -46,13 +46,10 @@ export default function Gallery() {
             <>
               모두 AI로 만들어진 가상 인물입니다. 마우스를 올리면 한국어로 직접
               말합니다. 당신의 서비스에 필요한 페르소나도 이렇게 만들 수 있습니다 —{" "}
-              <a
-                href="#demo-request"
-                className="font-semibold text-lime underline-offset-4 hover:underline"
-              >
-                무료 데모를 신청
-              </a>
-              하면 당신의 캐릭터로 첫 컷을 보내드립니다.
+              <a href="/test" className="font-semibold text-lime underline-offset-4 hover:underline">
+                테스트 랩에서 직접
+              </a>{" "}
+              만들어 보세요.
             </>
           }
         />

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "마인드브이알 MindVR — 한국어 특화 AI 아바타 스튜디오",
     description:
-      "한국어로 자연스럽게 말하는, 당신만의 AI 휴먼을 합리적 비용에. 무료 아바타 데모로 직접 확인하세요.",
+      "한국어로 자연스럽게 말하는, 당신만의 AI 휴먼을 합리적 비용에. 테스트 랩에서 직접 만들어 보세요.",
     locale: "ko_KR",
     type: "website",
   },

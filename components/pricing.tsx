@@ -1,3 +1,4 @@
+import DemoCta from "./demo-cta";
 import Reveal from "./reveal";
 import SectionHeader from "./section-header";
 
@@ -8,7 +9,7 @@ const plans = [
     unit: "",
     desc: "당신의 캐릭터로 한국어로 말하는 30초 영상 1컷. 품질을 직접 확인한 뒤 결정하세요.",
     features: ["캐릭터 1종 · 30초 1컷", "한국어 음성 시안 포함", "워터마크 포함 시안"],
-    cta: "무료 데모 신청",
+    cta: "무료로 체험하기",
     highlight: true,
   },
   {
@@ -65,16 +66,25 @@ export default function Pricing() {
                     </li>
                   ))}
                 </ul>
-                <a
-                  href="#demo-request"
-                  className={`mt-8 px-5 py-3 text-center text-sm font-bold transition-colors ${
+                {(() => {
+                  const cls = `mt-8 px-5 py-3 text-center text-sm font-bold transition-colors ${
                     p.highlight
                       ? "bg-lime text-ink hover:bg-lime-deep"
                       : "border border-ink-line text-paper-dim hover:border-lime hover:text-lime"
-                  }`}
-                >
-                  {p.cta}
-                </a>
+                  }`;
+                  return p.name === "무료 데모" ? (
+                    <DemoCta className={cls}>{p.cta}</DemoCta>
+                  ) : (
+                    <a
+                      href={`mailto:mindvridge.official@gmail.com?subject=${encodeURIComponent(
+                        `[마인드브이알] ${p.cta}`
+                      )}`}
+                      className={cls}
+                    >
+                      {p.cta}
+                    </a>
+                  );
+                })()}
               </div>
             ))}
           </div>

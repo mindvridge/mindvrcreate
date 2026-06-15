@@ -1,5 +1,4 @@
 import Faq from "@/components/faq";
-import FinalCta from "@/components/final-cta";
 import Footer from "@/components/footer";
 import Gallery from "@/components/gallery";
 import Header from "@/components/header";
@@ -28,7 +27,6 @@ export default function Home() {
         <Pricing />
         <TrustDetail />
         <Faq />
-        <FinalCta />
       </main>
       <Footer />
       <StickyCta />

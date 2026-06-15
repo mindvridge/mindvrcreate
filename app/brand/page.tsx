@@ -196,9 +196,6 @@ export default function BrandPage() {
               <Link href="/test" className="bg-lime px-6 py-3.5 text-base font-bold text-ink transition-colors hover:bg-lime-deep">
                 테스트 랩 열기
               </Link>
-              <Link href="/#demo-request" className="border border-ink-line px-6 py-3.5 text-base font-semibold text-paper-dim transition-colors hover:border-lime hover:text-lime">
-                무료 데모 신청
-              </Link>
             </div>
           </Reveal>
         </section>
