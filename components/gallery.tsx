@@ -34,6 +34,14 @@ const personas = [
   },
 ];
 
+const useCases = [
+  "유튜브 채널 운영",
+  "인스타그램·SNS 숏폼",
+  "블로그 영상",
+  "제품 소개·광고 영상",
+  "브랜드 안내",
+];
+
 export default function Gallery() {
   return (
     <section id="demos" className="border-t border-ink-line bg-ink-soft/60">
@@ -41,15 +49,13 @@ export default function Gallery() {
         <SectionHeader
           index="02"
           label="AI HUMANS"
-          title="아래 인물은 전부, 실존하지 않습니다."
+          title="사람 없이 만드는 AI 마케팅 콘텐츠"
           lede={
             <>
-              모두 AI로 만들어진 가상 인물입니다. 마우스를 올리면 한국어로 직접
-              말합니다. 당신의 서비스에 필요한 페르소나도 이렇게 만들 수 있습니다 —{" "}
-              <a href="/test" className="font-semibold text-lime underline-offset-4 hover:underline">
-                테스트 랩에서 직접
-              </a>{" "}
-              만들어 보세요.
+              실사 수준의 AI 휴먼이 대본을 말하는 영상을 만들어 드립니다. SNS·블로그·유튜브
+              홍보 영상, 제품 소개, 브랜드 메시지를 촬영 인력이나 장비 없이 제작할 수
+              있습니다. 대본만 입력하면 AI 휴먼이 말하는 영상이 완성됩니다. 외주 제작이나
+              반복 촬영 없이, 필요할 때마다 빠르게 콘텐츠를 만들 수 있습니다.
             </>
           }
         />
@@ -61,6 +67,21 @@ export default function Gallery() {
             </Reveal>
           ))}
         </div>
+
+        {/* 활용 예시 */}
+        <Reveal delay={120}>
+          <div className="mt-12 border-t border-ink-line pt-8">
+            <p className="font-mono text-[11px] tracking-[0.2em] text-paper-faint">활용 예시</p>
+            <ul className="mt-4 grid gap-x-8 gap-y-3 sm:grid-cols-2">
+              {useCases.map((u) => (
+                <li key={u} className="flex items-start gap-3 text-paper-dim">
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-lime" />
+                  <span className="leading-relaxed">{u}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Reveal>
       </div>
     </section>
   );
