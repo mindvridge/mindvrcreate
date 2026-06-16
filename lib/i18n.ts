@@ -397,7 +397,7 @@ const en: Dict = {
     lede: "A structure made possible because we produce it ourselves. Check quality with a free demo, then pay only per volume or project, in KRW.",
     plans: [
       { name: "Free demo", price: "₩0", unit: "", desc: "One 30-second clip of your character speaking Korean. Check the quality before you decide.", features: ["1 character · one 30-sec clip", "Korean voice sample included", "Watermarked sample"], cta: "Try it free" },
-      { name: "Startup plan", price: "Per project", unit: "quote", desc: "A low-barrier plan for early teams. Founders who passed the first round of Modu's Startup get a dedicated discount.", features: ["Dedicated character production", "Billed per video or per volume", "Discount for first-round founders"], cta: "Request a quote" },
+      { name: "Startup plan", price: "Per project", unit: "quote", desc: "A low-barrier plan for early teams. Founders who passed the first round of the Modu Startup program get a dedicated discount.", features: ["Dedicated character production", "Billed per video or per volume", "Discount for first-round founders"], cta: "Request a quote" },
       { name: "Dedicated · API", price: "By arrangement", unit: "", desc: "LLM, TTS, avatar video, and real-time avatar as standalone APIs and builds — adopt only what you need, without the avatar.", features: ["LLM · TTS · avatar video, à la carte", "Real-time avatar by consultation", "API · service integration"], cta: "Talk to us" },
     ],
     mailSubjectPrefix: "[MindVR] ",
@@ -417,7 +417,7 @@ const en: Dict = {
       { q: "Can the avatar converse in real time?", a: "Our main product today is high-quality video avatars. A real-time conversational AI human (interviews, intake, counseling, tutoring) is in preparation, built on a government R&D project. If you're planning to adopt one, talk to us early." },
       { q: "Can I use just LLM or TTS without the avatar?", a: "Yes. LLM (chat), TTS (voice), and avatar video are each offered as standalone APIs and builds. Adopt only what you need — voice synthesis alone, or the chat engine alone. Real-time avatar proceeds by separate consultation." },
       { q: "Do characters or illustrations work, not just photos of people?", a: "Yes. Photoreal people, 2D/3D characters, and illustrations can all be turned into avatars, and we produce multi-character dialogue scenes too." },
-      { q: "What's the benefit for first-round Modu's Startup founders?", a: "We offer a dedicated startup-plan discount to fellow founders who passed the same program." },
+      { q: "What's the benefit for first-round Modu Startup founders?", a: "We offer a dedicated startup-plan discount to fellow founders who passed the same program." },
     ],
   },
   footer: {
@@ -482,7 +482,7 @@ const zh: Dict = {
     homeTitle: "MindVR — 专注韩语的 AI 虚拟形象工作室",
     homeDescription: "会自然说韩语的、专属你的 AI 数字人，价格合理。在体验实验室亲自制作。",
     brandTitle: "品牌介绍 — MindVR",
-    brandDescription: "迈恩德VR（MindVR）是专注韩语的 AI 虚拟形象工作室。以自研制作能力，打造像真人一样自然说韩语的数字人。",
+    brandDescription: "MindVR是专注韩语的 AI 虚拟形象工作室。以自研制作能力，打造像真人一样自然说韩语的数字人。",
     ogLocale: "zh_CN",
   },
   nav: {
@@ -518,7 +518,7 @@ const zh: Dict = {
   heroStage: {
     soundOn: "开启声音",
     soundOff: "关闭声音",
-    alt: "迈恩德VR 制作的 AI 数字人主持",
+    alt: "MindVR 制作的 AI 数字人主持",
   },
   twoTypes: {
     eyebrowEm: "TWO",
@@ -565,7 +565,7 @@ const zh: Dict = {
       { index: "02", title: "要么像外语", body: "以英语为主打造的服务，韩语口型与韵律生硬，观众三秒就能察觉。" },
       { index: "03", title: "要么是模板", body: "从既定形象中挑选的方式，无法完整承载你的角色与品牌。" },
     ],
-    closing: { lead: "迈恩德VR 三者都不放弃。我们以针对韩语优化的", em: "自研制作能力与专属定制", tail: "来回应。" },
+    closing: { lead: "MindVR 三者都不放弃。我们以针对韩语优化的", em: "自研制作能力与专属定制", tail: "来回应。" },
   },
   values: {
     title: { lead: "会自然说韩语的 AI 数字人，", em: "价格合理", tail: "。" },
@@ -593,7 +593,7 @@ const zh: Dict = {
     freeBadge: "登录即送 300 积分",
     services: ["语音 (TTS)", "对话 (LLM)", "图像生成", "视频生成", "数字人"],
     title: { lead: "语音·对话·图像·视频·数字人，", em: "现在就亲自", tail: "做做看。" },
-    lede: "用结果说话，而非解释。体验实验室与迈恩德VR 生成工作室实时连接，五项功能都能亲手制作。注册即免费获得 300 积分。",
+    lede: "用结果说话，而非解释。体验实验室与MindVR 生成工作室实时连接，五项功能都能亲手制作。注册即免费获得 300 积分。",
     creditUnit: "积分 / 次",
     ctaOpen: "打开体验实验室",
     ctaSignup: "注册 · 300 积分",
@@ -653,10 +653,10 @@ const zh: Dict = {
   brand: {
     eyebrow: "品牌介绍",
     title: { lead: "我们打造", em: "会说韩语", tail: "的 AI 数字人。" },
-    lede: "迈恩德VR（MindVR）是专注韩语的 AI 虚拟形象工作室。我们以自研制作能力，打造像真人一样自然说韩语的数字人，价格合理。",
+    lede: "MindVR是专注韩语的 AI 虚拟形象工作室。我们以自研制作能力，打造像真人一样自然说韩语的数字人，价格合理。",
     whoTitle: "超越海外服务的局限。",
     whoParagraphs: [
-      "海外 AI 虚拟形象服务存在韩语生硬、美元订阅负担、千篇一律模板等局限。迈恩德VR 亲自打造契合韩语环境的 AI 数字人，三者一并解决。",
+      "海外 AI 虚拟形象服务存在韩语生硬、美元订阅负担、千篇一律模板等局限。MindVR 亲自打造契合韩语环境的 AI 数字人，三者一并解决。",
       "不是从既定形象中挑选，而是为你的角色、品牌或人设量身制作专属数字人。语音、视频、图像都在一处完成。",
     ],
     doTitle: "我们所做的。",
@@ -679,7 +679,7 @@ const zh: Dict = {
       { tag: "VR MEDITATION", name: "正念 VR 冥想", body: "以自然环境的沉浸式 VR 训练冥想与放松的项目。" },
     ],
     prepNote: "筹备中 — 演讲训练 · 社交焦虑训练。",
-    officialSite: "迈恩德VR 官方网站 →",
+    officialSite: "MindVR 官方网站 →",
     whyTitle: "以经过验证的技术实力打造。",
     facts: [
       { label: "GOV R&D", value: "承担政府 R&D 课题" },
