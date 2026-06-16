@@ -11,7 +11,15 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
  * 없으면 AI 생성 휴먼 이미지에 프로덕션 오버레이를 얹은 정지 스테이지를 보여준다.
  * (마브 API로 토킹헤드 데모가 나오면 videoSrc만 지정하면 됨)
  */
-export default function HeroStage({ videoSrc }: { videoSrc?: string }) {
+type StageLabels = { soundOn: string; soundOff: string; alt: string };
+
+export default function HeroStage({
+  videoSrc,
+  labels,
+}: {
+  videoSrc?: string;
+  labels: StageLabels;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [muted, setMuted] = useState(true);
   const [timecode, setTimecode] = useState("00:00:00:00");
@@ -58,7 +66,7 @@ export default function HeroStage({ videoSrc }: { videoSrc?: string }) {
       ) : (
         <img
           src={`${BASE}/images/hero.jpg`}
-          alt="마인드브이알이 제작한 AI 휴먼 프레젠터"
+          alt={labels.alt}
           className="h-full w-full object-cover"
         />
       )}
@@ -86,7 +94,7 @@ export default function HeroStage({ videoSrc }: { videoSrc?: string }) {
           onClick={toggleSound}
           className="absolute bottom-3 right-3 rounded-sm border border-white/30 bg-black/45 px-3 py-1.5 font-mono text-[11px] tracking-wider text-white backdrop-blur-sm transition-colors hover:border-lime hover:text-lime"
         >
-          {muted ? "SOUND ON · 소리 켜기" : "SOUND OFF · 소리 끄기"}
+          {muted ? labels.soundOn : labels.soundOff}
         </button>
       ) : (
         <div className="absolute bottom-4 right-4 font-mono text-[10px] tracking-widest text-white/75">

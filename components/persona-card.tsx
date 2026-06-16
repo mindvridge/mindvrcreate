@@ -12,12 +12,16 @@ export default function PersonaCard({
   tc,
   img,
   videoSrc,
+  hoverLabel,
+  aiLabel,
 }: {
   label: string;
   en: string;
   tc: string;
   img: string;
   videoSrc?: string;
+  hoverLabel: string;
+  aiLabel: string;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -70,12 +74,12 @@ export default function PersonaCard({
           <p className="font-mono text-[10px] tracking-[0.2em] text-white/70">{en}</p>
         </div>
         <p className="font-mono text-[10px] text-white/70">
-          {videoSrc && !playing ? "HOVER · 재생" : tc}
+          {videoSrc && !playing ? hoverLabel : tc}
         </p>
       </div>
 
       <span className="absolute right-3 top-3 rounded-sm bg-black/45 px-2 py-0.5 font-mono text-[9px] tracking-widest text-white/85 backdrop-blur-sm">
-        AI GENERATED
+        {aiLabel}
       </span>
       <span
         className={`absolute left-3 top-3 live-dot h-1.5 w-1.5 rounded-full bg-lime transition-opacity ${

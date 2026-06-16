@@ -13,7 +13,25 @@ type Me = {
   is_admin: number;
 };
 
-export default function AccountMenu() {
+type AccountLabels = {
+  unlimited: string;
+  unlimitedUse: string;
+  creditsSuffix: string;
+  lab: string;
+  account: string;
+  admin: string;
+  logout: string;
+};
+
+export default function AccountMenu({
+  t,
+  loginLabel,
+  signupLabel,
+}: {
+  t: AccountLabels;
+  loginLabel: string;
+  signupLabel: string;
+}) {
   const router = useRouter();
   const [me, setMe] = useState<Me | null | undefined>(undefined); // undefined=로딩, null=비로그인
   const [open, setOpen] = useState(false);
@@ -42,13 +60,13 @@ export default function AccountMenu() {
     return (
       <div className="flex items-center gap-3">
         <Link href="/login" className="hidden text-sm text-paper-dim hover:text-lime sm:inline">
-          로그인
+          {loginLabel}
         </Link>
         <Link
           href="/signup"
           className="bg-lime px-4 py-2 text-sm font-bold text-ink transition-colors hover:bg-lime-deep"
         >
-          회원가입
+          {signupLabel}
         </Link>
       </div>
     );
@@ -61,7 +79,7 @@ export default function AccountMenu() {
         className="flex items-center gap-2 border border-ink-line px-3 py-2 text-sm transition-colors hover:border-lime"
       >
         <span className="font-mono text-xs text-lime">
-          {me.unlimited ? "무제한" : `${me.credits.toLocaleString()} CR`}
+          {me.unlimited ? t.unlimited : `${me.credits.toLocaleString()} CR`}
         </span>
         <span className="hidden text-paper-dim sm:inline">{me.name}</span>
         <span className="text-paper-faint">▾</span>
@@ -75,14 +93,14 @@ export default function AccountMenu() {
               <p className="truncate text-sm font-semibold">{me.name}</p>
               <p className="truncate text-xs text-paper-faint">{me.email}</p>
               <p className="mt-2 font-mono text-xs text-lime">
-                {me.unlimited ? "무제한 사용" : `${me.credits.toLocaleString()} 크레딧`}
+                {me.unlimited ? t.unlimitedUse : `${me.credits.toLocaleString()} ${t.creditsSuffix}`}
               </p>
             </div>
             <Link href="/test" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-sm hover:bg-ink-soft">
-              테스트 랩
+              {t.lab}
             </Link>
             <Link href="/account" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-sm hover:bg-ink-soft">
-              내 계정 · 사용 내역
+              {t.account}
             </Link>
             {me.is_admin === 1 && (
               <Link
@@ -90,14 +108,14 @@ export default function AccountMenu() {
                 onClick={() => setOpen(false)}
                 className="block px-4 py-2.5 text-sm font-semibold text-lime hover:bg-ink-soft"
               >
-                관리자
+                {t.admin}
               </Link>
             )}
             <button
               onClick={logout}
               className="block w-full border-t border-ink-line px-4 py-2.5 text-left text-sm text-paper-dim hover:bg-ink-soft"
             >
-              로그아웃
+              {t.logout}
             </button>
           </div>
         </>

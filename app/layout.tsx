@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getLocale } from "@/lib/i18n-server";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -14,13 +15,14 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const lang = await getLocale();
   return (
-    <html lang="ko" className="h-full antialiased">
+    <html lang={lang} className="h-full antialiased">
       <head>
         <link
           rel="stylesheet"
