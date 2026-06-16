@@ -33,7 +33,7 @@ export default async function TestPage() {
           <p className="mt-5 max-w-2xl leading-relaxed text-paper-dim">{t.testPage.lede}</p>
 
           <div className="mt-12">
-            <TestLab />
+            <TestLab t={t.lab} serviceLabels={t.serviceLabels} />
           </div>
         </section>
       </main>

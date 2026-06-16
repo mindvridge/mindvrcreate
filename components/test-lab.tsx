@@ -2,28 +2,14 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CREDIT_COSTS, SERVICE_LABELS, type Service } from "@/lib/credits";
+import { CREDIT_COSTS, type Service } from "@/lib/credits";
+import type { Dict } from "@/lib/i18n";
 
 type TabId = Service;
+type LabT = Dict["lab"];
+type ServiceLabels = Dict["serviceLabels"];
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: "tts", label: "음성 (TTS)" },
-  { id: "llm", label: "대화 (LLM)" },
-  { id: "image", label: "이미지 생성" },
-  { id: "video", label: "영상 생성" },
-  { id: "music", label: "음악 생성" },
-  { id: "avatar", label: "아바타" },
-];
-
-// 서비스별 예상 소요 안내
-const ESTIMATE: Record<Service, string> = {
-  llm: "보통 몇 초",
-  tts: "보통 10~60초",
-  image: "보통 30초~2분",
-  video: "보통 수 분",
-  avatar: "보통 수 분",
-  music: "보통 1~3분",
-};
+const TAB_IDS: TabId[] = ["tts", "llm", "image", "video", "music", "avatar"];
 
 type ToastType = "success" | "error" | "info";
 type Toast = { id: number; type: ToastType; msg: string };
@@ -35,6 +21,8 @@ type Lab = {
   balance: number;
   setBalance: (n: number) => void;
   notify: (type: ToastType, msg: string) => void;
+  t: LabT;
+  serviceLabels: ServiceLabels;
 };
 
 type Kind = "audio" | "image" | "video" | "file";
@@ -81,10 +69,12 @@ function ImageDrop({
   file,
   fileUrl,
   onFile,
+  t,
 }: {
   file: File | null;
   fileUrl: string | null;
   onFile: (f: File | null) => void;
+  t: LabT;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
@@ -96,7 +86,7 @@ function ImageDrop({
       >
         {fileUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={fileUrl} alt="첨부 이미지" className="h-full w-full object-cover" />
+          <img src={fileUrl} alt={t.attachedAlt} className="h-full w-full object-cover" />
         ) : (
           <span className="text-2xl leading-none">＋</span>
         )}
@@ -105,15 +95,12 @@ function ImageDrop({
         {file ? (
           <>
             <p className="truncate font-semibold text-paper-dim">{file.name}</p>
-            <button
-              onClick={() => onFile(null)}
-              className="mt-1 text-xs font-semibold text-paper-faint hover:text-lime"
-            >
-              제거
+            <button onClick={() => onFile(null)} className="mt-1 text-xs font-semibold text-paper-faint hover:text-lime">
+              {t.remove}
             </button>
           </>
         ) : (
-          <p className="text-paper-faint">사진 선택 (JPG·PNG)</p>
+          <p className="text-paper-faint">{t.choosePhoto}</p>
         )}
       </div>
       <input
@@ -137,6 +124,8 @@ function useJobRunner(lab: Lab, service: Service) {
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const jobIdRef = useRef<string | null>(null);
   const notify = lab.notify;
+  const tr = lab.t;
+  const svcLabel = lab.serviceLabels[service];
   const storeKey = `mv_job_${service}`;
 
   const stop = useCallback(() => {
@@ -172,12 +161,12 @@ function useJobRunner(lab: Lab, service: Service) {
             const ct = r.headers.get("content-type") ?? "";
             const blob = await r.blob();
             setState({ phase: "done", jobId, kind: kindFromContentType(ct), url: URL.createObjectURL(blob) });
-            notify("success", `${SERVICE_LABELS[service]} 생성이 완료됐어요!`);
+            notify("success", tr.jobDone.replace("{s}", svcLabel));
           } else if (job.status === "failed") {
             stop();
             clearStore();
-            setState({ phase: "error", message: "생성에 실패했어요. 크레딧은 환불됐습니다." });
-            notify("error", "생성에 실패했어요. 크레딧은 환불됐습니다.");
+            setState({ phase: "error", message: tr.jobFailed });
+            notify("error", tr.jobFailed);
           } else {
             setState({ phase: "polling", jobId, status: job.status, seconds });
           }
@@ -186,7 +175,7 @@ function useJobRunner(lab: Lab, service: Service) {
         }
       }, 4000);
     },
-    [stop, clearStore, lab, notify, service]
+    [stop, clearStore, lab, notify, tr, svcLabel]
   );
 
   // 언마운트 시 타이머만 정리(스토리지는 유지 → 재방문 시 재개)
@@ -220,13 +209,13 @@ function useJobRunner(lab: Lab, service: Service) {
         if (b !== null) lab.setBalance(Number(b));
 
         if (res.status === 402) {
-          setState({ phase: "error", message: "크레딧이 부족합니다.", insufficient: true });
-          notify("error", "크레딧이 부족합니다. 충전 후 이용해 주세요.");
+          setState({ phase: "error", message: tr.insufficient, insufficient: true });
+          notify("error", tr.insufficientToast);
           return;
         }
         const json = await res.json();
         if (!res.ok || !json.job_id) {
-          const msg = json.detail ?? "요청에 실패했습니다.";
+          const msg = json.detail ?? tr.requestFailed;
           setState({ phase: "error", message: msg });
           notify("error", msg);
           return;
@@ -237,8 +226,8 @@ function useJobRunner(lab: Lab, service: Service) {
         notify(
           "info",
           unlimited || !charged
-            ? `${SERVICE_LABELS[service]} 생성을 시작했어요`
-            : `${SERVICE_LABELS[service]} 생성 시작 · ${charged} 크레딧 사용`
+            ? tr.jobStarted.replace("{s}", svcLabel)
+            : tr.jobStartedCharged.replace("{s}", svcLabel).replace("{c}", charged)
         );
 
         const jobId: string = json.job_id;
@@ -250,11 +239,11 @@ function useJobRunner(lab: Lab, service: Service) {
         }
         poll(jobId, startedAt);
       } catch {
-        setState({ phase: "error", message: "요청 중 오류가 발생했습니다." });
-        notify("error", "요청 중 오류가 발생했습니다.");
+        setState({ phase: "error", message: tr.requestError });
+        notify("error", tr.requestError);
       }
     },
-    [stop, lab, notify, service, poll, storeKey]
+    [stop, lab, notify, tr, svcLabel, poll, storeKey]
   );
 
   const cancel = useCallback(async () => {
@@ -267,11 +256,11 @@ function useJobRunner(lab: Lab, service: Service) {
       const res = await fetch(`/api/marv/jobs/${jobId}/cancel`, { method: "POST" });
       const b = res.headers.get("X-MV-Balance");
       if (b !== null) lab.setBalance(Number(b));
-      notify("info", `${SERVICE_LABELS[service]} 생성을 취소했어요. 크레딧을 환불했습니다.`);
+      notify("info", tr.cancelled.replace("{s}", svcLabel));
     } catch {
-      notify("error", "취소 요청 중 오류가 발생했습니다.");
+      notify("error", tr.cancelError);
     }
-  }, [stop, clearStore, lab, notify, service]);
+  }, [stop, clearStore, lab, notify, tr, svcLabel]);
 
   return { state, run, cancel };
 }
@@ -301,7 +290,7 @@ function CostButton({
       className="inline-flex items-center gap-2 bg-lime px-6 py-3 text-sm font-bold text-ink transition-colors hover:bg-lime-deep disabled:opacity-50"
     >
       {busy && <Spinner className="h-4 w-4" />}
-      {busy ? "생성 중…" : children}
+      {busy ? lab.t.generating : children}
       {!busy && <span className="font-mono text-xs opacity-70">· {cost} CR</span>}
     </button>
   );
@@ -311,10 +300,12 @@ function CostButton({
 function GenerationProgress({
   state,
   service,
+  t,
   onCancel,
 }: {
   state: JobState;
   service: Service;
+  t: LabT;
   onCancel?: () => void;
 }) {
   if (state.phase !== "submitting" && state.phase !== "polling") return null;
@@ -323,14 +314,8 @@ function GenerationProgress({
   const ss = String(elapsed % 60).padStart(2, "0");
   const queued = state.phase === "polling" && state.status === "queued";
   const title =
-    state.phase === "submitting"
-      ? "요청을 보내는 중…"
-      : queued
-        ? "대기열에서 순서를 기다리고 있어요"
-        : "AI가 열심히 만들고 있어요";
-  const sub = queued
-    ? "GPU가 비는 대로 자동으로 시작됩니다"
-    : `${ESTIMATE[service]} 걸려요 · 다른 페이지로 이동해도 계속 진행됩니다`;
+    state.phase === "submitting" ? t.progressSubmitting : queued ? t.progressQueued : t.progressWorking;
+  const sub = queued ? t.queuedSub : t.workingSub.replace("{est}", t.estimate[service]);
 
   return (
     <div className="mt-5 animate-fade border border-ink-line bg-ink-soft p-5">
@@ -350,7 +335,7 @@ function GenerationProgress({
             onClick={onCancel}
             className="shrink-0 border border-ink-line px-3 py-1.5 text-xs font-semibold text-paper-dim transition-colors hover:border-red-500 hover:text-red-600"
           >
-            취소
+            {t.cancel}
           </button>
         )}
       </div>
@@ -364,7 +349,7 @@ function GenerationProgress({
   );
 }
 
-function ResultCard({ state }: { state: JobState }) {
+function ResultCard({ state, t }: { state: JobState; t: LabT }) {
   const [zoom, setZoom] = useState(false);
   if (state.phase !== "done") return null;
 
@@ -376,16 +361,16 @@ function ResultCard({ state }: { state: JobState }) {
     <div className="mt-5 animate-pop border border-ink-line bg-ink-soft p-5">
       <div className="mb-3 flex items-center justify-between">
         <p className="flex items-center gap-1.5 text-sm font-bold text-lime">
-          <span className="text-base leading-none">✓</span> 생성 완료
+          <span className="text-base leading-none">✓</span> {t.doneHeader}
         </p>
         <div className="flex items-center gap-3">
           {zoomable && (
             <button onClick={() => setZoom(true)} className="text-xs font-semibold text-paper-dim hover:text-lime">
-              크게 보기
+              {t.viewLarge}
             </button>
           )}
           <a href={state.url} download={fileName} className="text-xs font-semibold text-paper-dim hover:text-lime">
-            다운로드
+            {t.download}
           </a>
         </div>
       </div>
@@ -394,15 +379,13 @@ function ResultCard({ state }: { state: JobState }) {
       {state.kind === "image" && (
         <button onClick={() => setZoom(true)} className="block w-full">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={state.url} alt="생성 결과" className="max-h-[420px] w-auto cursor-zoom-in" />
+          <img src={state.url} alt={t.resultAlt} className="max-h-[420px] w-auto cursor-zoom-in" />
         </button>
       )}
-      {state.kind === "video" && (
-        <video controls autoPlay loop src={state.url} className="max-h-[420px] w-auto" />
-      )}
+      {state.kind === "video" && <video controls autoPlay loop src={state.url} className="max-h-[420px] w-auto" />}
       {state.kind === "file" && (
         <a href={state.url} download={fileName} className="font-semibold text-lime underline">
-          결과 파일 다운로드
+          {t.resultFileDownload}
         </a>
       )}
 
@@ -413,7 +396,7 @@ function ResultCard({ state }: { state: JobState }) {
         >
           {state.kind === "image" ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={state.url} alt="생성 결과 크게 보기" className="max-h-[92vh] max-w-[92vw] object-contain" />
+            <img src={state.url} alt={t.resultZoomAlt} className="max-h-[92vh] max-w-[92vw] object-contain" />
           ) : (
             <video
               controls
@@ -428,7 +411,7 @@ function ResultCard({ state }: { state: JobState }) {
             onClick={() => setZoom(false)}
             className="absolute right-4 top-4 border border-white/30 bg-black/50 px-3 py-1.5 font-mono text-xs tracking-wider text-white hover:border-lime hover:text-lime"
           >
-            닫기 ✕
+            {t.close}
           </button>
         </div>
       )}
@@ -436,7 +419,7 @@ function ResultCard({ state }: { state: JobState }) {
   );
 }
 
-function ErrorLine({ state }: { state: JobState }) {
+function ErrorLine({ state, t }: { state: JobState; t: LabT }) {
   if (state.phase !== "error") return null;
   return (
     <div className="mt-5 animate-fade border border-red-500/30 bg-red-500/5 p-4">
@@ -444,7 +427,7 @@ function ErrorLine({ state }: { state: JobState }) {
         {state.message}{" "}
         {state.insufficient && (
           <Link href="/account" className="ml-1 text-lime underline">
-            충전 안내
+            {t.chargeInfo}
           </Link>
         )}
       </p>
@@ -458,7 +441,7 @@ function TtsPanel({ lab }: { lab: Lab }) {
   const { state, run, cancel } = useJobRunner(lab, "tts");
   const [voices, setVoices] = useState<{ id: string; name: string }[]>([]);
   const [voiceId, setVoiceId] = useState("");
-  const [text, setText] = useState("안녕하세요, 마인드브이알입니다. 이 음성은 방금 만들어졌습니다.");
+  const [text, setText] = useState(lab.t.ttsDefault);
 
   useEffect(() => {
     fetch("/api/marv/voices")
@@ -479,10 +462,10 @@ function TtsPanel({ lab }: { lab: Lab }) {
   const busy = state.phase === "submitting" || state.phase === "polling";
   return (
     <div className="space-y-4">
-      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} className={inputCls} placeholder="읽을 한국어 문장" />
+      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} className={inputCls} placeholder={lab.t.ttsPlaceholder} />
       <div className="flex flex-wrap items-center gap-3">
         <select value={voiceId} onChange={(e) => setVoiceId(e.target.value)} className={`${inputCls} max-w-xs`}>
-          <option value="">기본 음성</option>
+          <option value="">{lab.t.defaultVoice}</option>
           {voices.map((v) => (
             <option key={v.id} value={v.id}>
               {v.name}
@@ -490,23 +473,17 @@ function TtsPanel({ lab }: { lab: Lab }) {
           ))}
         </select>
         <CostButton service="tts" lab={lab} onClick={submit} busy={busy}>
-          음성 생성
+          {lab.t.ttsGenerate}
         </CostButton>
       </div>
-      <GenerationProgress state={state} service="tts" onCancel={cancel} />
-      <ResultCard key={state.phase === "done" ? state.jobId : "idle"} state={state} />
-      <ErrorLine state={state} />
+      <GenerationProgress state={state} service="tts" t={lab.t} onCancel={cancel} />
+      <ResultCard key={state.phase === "done" ? state.jobId : "idle"} state={state} t={lab.t} />
+      <ErrorLine state={state} t={lab.t} />
     </div>
   );
 }
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
-
-const CHAT_EXAMPLES = [
-  "마인드브이알을 한 문장으로 소개해줘.",
-  "AI 휴먼으로 뭘 만들 수 있어?",
-  "30대 한국 여성 이미지 만들어줘",
-];
 
 function LlmPanel({ lab }: { lab: Lab }) {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
@@ -538,21 +515,21 @@ function LlmPanel({ lab }: { lab: Lab }) {
       const b = res.headers.get("X-MV-Balance");
       if (b !== null) lab.setBalance(Number(b));
       if (res.status === 402) {
-        setError({ message: "크레딧이 부족합니다.", insufficient: true });
-        lab.notify("error", "크레딧이 부족합니다. 충전 후 이용해 주세요.");
+        setError({ message: lab.t.insufficient, insufficient: true });
+        lab.notify("error", lab.t.insufficientToast);
         return;
       }
       const json = await res.json();
       if (!res.ok) {
-        setError({ message: json.detail ?? "요청에 실패했습니다." });
-        lab.notify("error", json.detail ?? "요청에 실패했습니다.");
+        setError({ message: json.detail ?? lab.t.requestFailed });
+        lab.notify("error", json.detail ?? lab.t.requestFailed);
         return;
       }
       const reply: string =
-        json.message_to_user ?? (json.job_id ? "생성을 시작했어요. 잠시만 기다려 주세요." : "응답을 받지 못했습니다.");
+        json.message_to_user ?? (json.job_id ? lab.t.chatStartedReply : lab.t.chatNoReply);
       setMessages((m) => [...m, { role: "assistant", content: reply }]);
     } catch {
-      setError({ message: "요청 중 오류가 발생했습니다." });
+      setError({ message: lab.t.requestError });
     } finally {
       setBusy(false);
     }
@@ -568,7 +545,9 @@ function LlmPanel({ lab }: { lab: Lab }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="font-mono text-[11px] tracking-[0.2em] text-paper-faint">대화형 AI · 메시지당 {CREDIT_COSTS.llm} CR</p>
+        <p className="font-mono text-[11px] tracking-[0.2em] text-paper-faint">
+          {lab.t.chatHeader.replace("{c}", String(CREDIT_COSTS.llm))}
+        </p>
         {messages.length > 0 && (
           <button
             onClick={() => {
@@ -577,21 +556,18 @@ function LlmPanel({ lab }: { lab: Lab }) {
             }}
             className="text-xs font-semibold text-paper-faint hover:text-lime"
           >
-            대화 지우기
+            {lab.t.clearChat}
           </button>
         )}
       </div>
 
       {/* 대화 영역 */}
-      <div
-        ref={scrollRef}
-        className="h-[400px] space-y-3 overflow-y-auto border border-ink-line bg-ink-soft/40 p-4"
-      >
+      <div ref={scrollRef} className="h-[400px] space-y-3 overflow-y-auto border border-ink-line bg-ink-soft/40 p-4">
         {messages.length === 0 && !busy ? (
           <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-            <p className="text-sm text-paper-faint">무엇이든 물어보세요. 대화 맥락을 기억합니다.</p>
+            <p className="text-sm text-paper-faint">{lab.t.chatEmpty}</p>
             <div className="flex flex-wrap justify-center gap-2">
-              {CHAT_EXAMPLES.map((ex) => (
+              {lab.t.chatExamples.map((ex) => (
                 <button
                   key={ex}
                   onClick={() => send(ex)}
@@ -608,9 +584,7 @@ function LlmPanel({ lab }: { lab: Lab }) {
               <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div
                   className={`max-w-[80%] whitespace-pre-wrap px-4 py-2.5 text-sm leading-relaxed animate-pop ${
-                    m.role === "user"
-                      ? "bg-lime text-ink"
-                      : "border border-ink-line bg-ink text-paper-dim"
+                    m.role === "user" ? "bg-lime text-ink" : "border border-ink-line bg-ink text-paper-dim"
                   }`}
                 >
                   {m.content}
@@ -621,7 +595,7 @@ function LlmPanel({ lab }: { lab: Lab }) {
               <div className="flex justify-start">
                 <div className="inline-flex items-center gap-2 border border-ink-line bg-ink px-4 py-2.5 text-sm text-paper-faint">
                   <Spinner className="h-4 w-4" />
-                  입력 중…
+                  {lab.t.typing}
                 </div>
               </div>
             )}
@@ -635,7 +609,7 @@ function LlmPanel({ lab }: { lab: Lab }) {
             {error.message}{" "}
             {error.insufficient && (
               <Link href="/account" className="ml-1 text-lime underline">
-                충전 안내
+                {lab.t.chargeInfo}
               </Link>
             )}
           </p>
@@ -649,7 +623,7 @@ function LlmPanel({ lab }: { lab: Lab }) {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown}
           rows={1}
-          placeholder={broke ? "크레딧이 부족합니다" : "메시지를 입력하세요 (Enter 전송 · Shift+Enter 줄바꿈)"}
+          placeholder={broke ? lab.t.insufficient : lab.t.chatPlaceholder}
           disabled={broke}
           className={`${inputCls} max-h-32 min-h-[48px] flex-1 resize-none`}
         />
@@ -658,12 +632,10 @@ function LlmPanel({ lab }: { lab: Lab }) {
           disabled={busy || broke || !input.trim()}
           className="inline-flex h-[48px] items-center gap-2 bg-lime px-6 text-sm font-bold text-ink transition-colors hover:bg-lime-deep disabled:opacity-50"
         >
-          {busy ? <Spinner className="h-4 w-4" /> : "보내기"}
+          {busy ? <Spinner className="h-4 w-4" /> : lab.t.send}
         </button>
       </div>
-      <p className="text-xs text-paper-faint">
-        * &ldquo;~만들어줘&rdquo;라고 하면 실제 생성 잡이 시작될 수 있습니다. 결과물은 내 갤러리에서 확인하세요.
-      </p>
+      <p className="text-xs text-paper-faint">{lab.t.chatNote}</p>
     </div>
   );
 }
@@ -677,6 +649,7 @@ function useCompareRunner(lab: Lab) {
   const [errMsg, setErrMsg] = useState("");
   const timers = useRef<Record<string, ReturnType<typeof setInterval>>>({});
   const notify = lab.notify;
+  const tr = lab.t;
   const storeKey = "mv_compare_image";
 
   const stop = useCallback(() => {
@@ -695,13 +668,13 @@ function useCompareRunner(lab: Lab) {
   const pollJobs = useCallback(
     (jobs: { job_id: string; model?: string }[]) => {
       stop();
-      setItems(jobs.map((j) => ({ jobId: j.job_id, model: j.model ?? "모델", phase: "polling" as const })));
+      setItems(jobs.map((j) => ({ jobId: j.job_id, model: j.model ?? "", phase: "polling" as const })));
       setPhase("running");
       let done = 0;
       const finishOne = () => {
         if (++done >= jobs.length) {
           clearStore();
-          notify("success", "이미지 생성이 완료됐어요!");
+          notify("success", tr.compareDone);
         }
       };
       jobs.forEach((j) => {
@@ -729,7 +702,7 @@ function useCompareRunner(lab: Lab) {
         }, 4000);
       });
     },
-    [stop, clearStore, notify]
+    [stop, clearStore, notify, tr]
   );
 
   useEffect(() => stop, [stop]);
@@ -765,8 +738,8 @@ function useCompareRunner(lab: Lab) {
         if (b !== null) lab.setBalance(Number(b));
         if (res.status === 402) {
           setPhase("error");
-          setErrMsg("크레딧이 부족합니다.");
-          notify("error", "크레딧이 부족합니다. 충전 후 이용해 주세요.");
+          setErrMsg(tr.insufficient);
+          notify("error", tr.insufficientToast);
           return;
         }
         const json = await res.json();
@@ -774,14 +747,19 @@ function useCompareRunner(lab: Lab) {
           ? json.jobs.filter((j: { job_id?: string }) => j?.job_id)
           : [];
         if (!res.ok || jobs.length === 0) {
-          const m = json.detail ?? "요청에 실패했습니다.";
+          const m = json.detail ?? tr.requestFailed;
           setPhase("error");
           setErrMsg(m);
           notify("error", m);
           return;
         }
         const charged = res.headers.get("X-MV-Charged");
-        notify("info", `이미지 ${jobs.length}장 생성 시작${charged ? ` · ${charged} 크레딧 사용` : ""}`);
+        notify(
+          "info",
+          charged
+            ? tr.compareStartCharged.replace("{n}", String(jobs.length)).replace("{c}", charged)
+            : tr.compareStart.replace("{n}", String(jobs.length))
+        );
         try {
           localStorage.setItem(storeKey, JSON.stringify(jobs.map((j) => ({ job_id: j.job_id, model: j.model }))));
         } catch {
@@ -790,17 +768,17 @@ function useCompareRunner(lab: Lab) {
         pollJobs(jobs);
       } catch {
         setPhase("error");
-        setErrMsg("요청 중 오류가 발생했습니다.");
-        notify("error", "요청 중 오류가 발생했습니다.");
+        setErrMsg(tr.requestError);
+        notify("error", tr.requestError);
       }
     },
-    [stop, lab, notify, pollJobs]
+    [stop, lab, notify, tr, pollJobs]
   );
 
   return { items, phase, errMsg, run };
 }
 
-function CompareGrid({ items, onZoom }: { items: CompareItem[]; onZoom: (url: string) => void }) {
+function CompareGrid({ items, onZoom, t }: { items: CompareItem[]; onZoom: (url: string) => void; t: LabT }) {
   return (
     <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
       {items.map((it, i) => (
@@ -809,10 +787,10 @@ function CompareGrid({ items, onZoom }: { items: CompareItem[]; onZoom: (url: st
             {it.phase === "done" && it.url ? (
               <button onClick={() => onZoom(it.url!)} className="h-full w-full">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={it.url} alt={`생성 결과 ${i + 1}`} className="h-full w-full cursor-zoom-in object-cover" />
+                <img src={it.url} alt={t.imageN.replace("{n}", String(i + 1))} className="h-full w-full cursor-zoom-in object-cover" />
               </button>
             ) : it.phase === "error" ? (
-              <span className="px-2 text-center text-xs text-red-600">생성 실패</span>
+              <span className="px-2 text-center text-xs text-red-600">{t.genFailed}</span>
             ) : (
               <span className="text-lime">
                 <Spinner />
@@ -820,14 +798,14 @@ function CompareGrid({ items, onZoom }: { items: CompareItem[]; onZoom: (url: st
             )}
           </div>
           <div className="flex items-center justify-between gap-2 px-2.5 py-2">
-            <p className="font-mono text-[10px] text-paper-dim">이미지 {i + 1}</p>
+            <p className="font-mono text-[10px] text-paper-dim">{t.imageN.replace("{n}", String(i + 1))}</p>
             {it.phase === "done" && it.url && (
               <a
                 href={it.url}
                 download={`mindvr-${it.jobId.slice(0, 8)}.png`}
                 className="shrink-0 text-[10px] font-semibold text-paper-faint hover:text-lime"
               >
-                저장
+                {t.save}
               </a>
             )}
           </div>
@@ -837,7 +815,7 @@ function CompareGrid({ items, onZoom }: { items: CompareItem[]; onZoom: (url: st
   );
 }
 
-// 국적·국가·해외 지명이 명시되지 않은 프롬프트는 자동으로 한국인·한국 배경으로 보정한다.
+// 국적·국가·해외 지명이 명시되지 않은 프롬프트는 자동으로 한국인·한국 배경으로 보정한다.(언어 무관 제품 동작)
 const NATIONALITY_RE =
   /한국|국내|미국|일본|중국|대만|유럽|서양|동양|아시아|외국|이국|글로벌|흑인|백인|아프리카|인도|베트남|태국|필리핀|인도네시아|말레이|러시아|프랑스|영국|독일|이탈리아|스페인|네덜란드|스웨덴|멕시코|브라질|아르헨|라틴|히스패닉|아랍|중동|튀르키예|터키|이집트|몽골|뉴욕|파리|도쿄|런던|베이징|상하이|홍콩|방콕|싱가포르|두바이|로마|베를린|시드니|korean|american|japanese|chinese|western|european|african|asian/i;
 const PERSON_RE =
@@ -852,7 +830,7 @@ function localizePrompt(p: string): string {
 
 function ImagePanel({ lab }: { lab: Lab }) {
   const compare = useCompareRunner(lab);
-  const [prompt, setPrompt] = useState("밝은 스튜디오에서 카메라를 보고 미소 짓는 바리스타");
+  const [prompt, setPrompt] = useState(lab.t.imgDefault);
   const [aspect, setAspect] = useState("1:1");
   const [zoom, setZoom] = useState<string | null>(null);
 
@@ -883,13 +861,16 @@ function ImagePanel({ lab }: { lab: Lab }) {
           className="inline-flex items-center gap-2 bg-lime px-6 py-3 text-sm font-bold text-ink transition-colors hover:bg-lime-deep disabled:opacity-50"
         >
           {busy && <Spinner className="h-4 w-4" />}
-          {busy ? "생성 중…" : "이미지 4장 생성"}
+          {busy ? lab.t.generating : lab.t.gen4}
           {!busy && <span className="font-mono text-xs opacity-70">· {cost} CR</span>}
         </button>
       </div>
       <p className="text-xs text-paper-faint">
-        * 한 번에 <span className="text-paper-dim">4개 AI 모델이 각 1장씩</span> 생성합니다. 마음에 드는 결과를 골라
-        저장하세요. 국적을 따로 적지 않으면 <span className="text-paper-dim">한국인·한국 배경</span>으로 자동 생성됩니다.
+        {lab.t.imgNoteA}
+        <span className="text-paper-dim">{lab.t.imgNoteEm1}</span>
+        {lab.t.imgNoteB}
+        <span className="text-paper-dim">{lab.t.imgNoteEm2}</span>
+        {lab.t.imgNoteC}
       </p>
 
       {/* 4장 동시 생성 진행/결과 */}
@@ -898,10 +879,10 @@ function ImagePanel({ lab }: { lab: Lab }) {
           <span className="text-lime">
             <Spinner />
           </span>
-          <p className="text-sm font-semibold">이미지 4장을 동시에 만드는 중…</p>
+          <p className="text-sm font-semibold">{lab.t.comparing}</p>
         </div>
       )}
-      {compare.items && <CompareGrid items={compare.items} onZoom={setZoom} />}
+      {compare.items && <CompareGrid items={compare.items} onZoom={setZoom} t={lab.t} />}
       {compare.phase === "error" && compare.errMsg && (
         <div className="mt-5 animate-fade border border-red-500/30 bg-red-500/5 p-4">
           <p className="text-sm font-semibold text-red-600">{compare.errMsg}</p>
@@ -914,7 +895,7 @@ function ImagePanel({ lab }: { lab: Lab }) {
           onClick={() => setZoom(null)}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={zoom} alt="생성 결과 크게 보기" className="max-h-[92vh] max-w-[92vw] object-contain" />
+          <img src={zoom} alt={lab.t.resultZoomAlt} className="max-h-[92vh] max-w-[92vw] object-contain" />
         </div>
       )}
     </div>
@@ -923,7 +904,7 @@ function ImagePanel({ lab }: { lab: Lab }) {
 
 function VideoPanel({ lab }: { lab: Lab }) {
   const { state, run, cancel } = useJobRunner(lab, "video");
-  const [prompt, setPrompt] = useState("햇살 좋은 한강공원에서 강아지와 산책하는 사람, 시네마틱");
+  const [prompt, setPrompt] = useState(lab.t.videoDefault);
   const [file, setFile] = useState<File | null>(null);
   const fileUrl = useObjectUrl(file);
 
@@ -940,37 +921,35 @@ function VideoPanel({ lab }: { lab: Lab }) {
   const busy = state.phase === "submitting" || state.phase === "polling";
   return (
     <div className="space-y-4">
-      <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={3} className={inputCls} placeholder="만들고 싶은 영상을 설명하세요" />
+      <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={3} className={inputCls} placeholder={lab.t.videoPlaceholder} />
 
       <div>
-        <p className="mb-2 font-mono text-[10px] tracking-[0.2em] text-paper-faint">
-          시작 이미지 (선택) — 첨부하면 그 이미지가 움직이는 영상으로 만듭니다
-        </p>
-        <ImageDrop file={file} fileUrl={fileUrl} onFile={setFile} />
+        <p className="mb-2 font-mono text-[10px] tracking-[0.2em] text-paper-faint">{lab.t.videoStartImage}</p>
+        <ImageDrop file={file} fileUrl={fileUrl} onFile={setFile} t={lab.t} />
       </div>
 
       <CostButton service="video" lab={lab} onClick={submit} busy={busy}>
-        {file ? "이미지로 영상 생성 (5초)" : "영상 생성 (5초)"}
+        {file ? lab.t.videoGenImage : lab.t.videoGen}
       </CostButton>
-      <GenerationProgress state={state} service="video" onCancel={cancel} />
-      <ResultCard key={state.phase === "done" ? state.jobId : "idle"} state={state} />
-      <ErrorLine state={state} />
+      <GenerationProgress state={state} service="video" t={lab.t} onCancel={cancel} />
+      <ResultCard key={state.phase === "done" ? state.jobId : "idle"} state={state} t={lab.t} />
+      <ErrorLine state={state} t={lab.t} />
     </div>
   );
 }
 
-const AVATAR_SAMPLES = [
-  { label: "프레젠터", src: "/images/hero.jpg" },
-  { label: "상담사", src: "/images/persona-counselor.jpg" },
-  { label: "면접관", src: "/images/persona-interviewer.jpg" },
-  { label: "인플루언서", src: "/images/persona-influencer.jpg" },
-  { label: "디지털트윈", src: "/images/persona-twin.jpg" },
+const AVATAR_SRCS = [
+  "/images/hero.jpg",
+  "/images/persona-counselor.jpg",
+  "/images/persona-interviewer.jpg",
+  "/images/persona-influencer.jpg",
+  "/images/persona-twin.jpg",
 ];
 
 function AvatarPanel({ lab }: { lab: Lab }) {
   const { state, run, cancel } = useJobRunner(lab, "avatar");
-  const [text, setText] = useState("안녕하세요! 이 영상은 테스트 페이지에서 방금 만들어졌습니다.");
-  const [sample, setSample] = useState(AVATAR_SAMPLES[0].src);
+  const [text, setText] = useState(lab.t.avatarDefault);
+  const [sample, setSample] = useState(AVATAR_SRCS[0]);
   const [file, setFile] = useState<File | null>(null);
   const fileUrl = useObjectUrl(file);
 
@@ -992,48 +971,47 @@ function AvatarPanel({ lab }: { lab: Lab }) {
   const busy = state.phase === "submitting" || state.phase === "polling";
   return (
     <div className="space-y-4">
-      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} className={inputCls} placeholder="아바타가 말할 한국어 대사" />
+      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} className={inputCls} placeholder={lab.t.avatarPlaceholder} />
       <div>
-        <p className="mb-2 font-mono text-[10px] tracking-[0.2em] text-paper-faint">인물 선택</p>
+        <p className="mb-2 font-mono text-[10px] tracking-[0.2em] text-paper-faint">{lab.t.personSelect}</p>
         <div className="flex flex-wrap gap-2">
-          {AVATAR_SAMPLES.map((s) => (
+          {AVATAR_SRCS.map((src, i) => (
             <button
-              key={s.src}
+              key={src}
               onClick={() => {
-                setSample(s.src);
+                setSample(src);
                 setFile(null);
               }}
-              className={`overflow-hidden border-2 transition-colors ${!file && sample === s.src ? "border-lime" : "border-ink-line"}`}
-              title={s.label}
+              className={`overflow-hidden border-2 transition-colors ${!file && sample === src ? "border-lime" : "border-ink-line"}`}
+              title={lab.t.avatarSamples[i]}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={s.src} alt={s.label} className="h-16 w-14 object-cover" />
+              <img src={src} alt={lab.t.avatarSamples[i]} className="h-16 w-14 object-cover" />
             </button>
           ))}
         </div>
-        <p className="mb-2 mt-4 font-mono text-[10px] tracking-[0.2em] text-paper-faint">
-          또는 내 사진 첨부 — 첨부한 인물이 말하는 영상으로 만듭니다
-        </p>
-        <ImageDrop file={file} fileUrl={fileUrl} onFile={setFile} />
+        <p className="mb-2 mt-4 font-mono text-[10px] tracking-[0.2em] text-paper-faint">{lab.t.avatarUpload}</p>
+        <ImageDrop file={file} fileUrl={fileUrl} onFile={setFile} t={lab.t} />
       </div>
       <CostButton service="avatar" lab={lab} onClick={submit} busy={busy}>
-        말하는 아바타 생성 (6초)
+        {lab.t.avatarGen}
       </CostButton>
-      <GenerationProgress state={state} service="avatar" onCancel={cancel} />
-      <ResultCard key={state.phase === "done" ? state.jobId : "idle"} state={state} />
-      <ErrorLine state={state} />
+      <GenerationProgress state={state} service="avatar" t={lab.t} onCancel={cancel} />
+      <ResultCard key={state.phase === "done" ? state.jobId : "idle"} state={state} t={lab.t} />
+      <ErrorLine state={state} t={lab.t} />
     </div>
   );
 }
 
-const MUSIC_GENRES = ["자동", "어쿠스틱", "팝", "발라드", "재즈", "Lo-Fi", "일렉트로닉", "시네마틱", "클래식", "힙합", "R&B", "록", "트로트"];
-const MUSIC_MOODS = ["자동", "밝은", "차분한", "감성적인", "신나는", "웅장한", "슬픈", "몽환적인"];
+// 마브 API에 보낼 정규화된(영문) 장르·무드 값. 인덱스 0 = 자동(미전송).
+const GENRE_VALUES = ["", "Acoustic", "Pop", "Ballad", "Jazz", "Lo-Fi", "Electronic", "Cinematic", "Classical", "Hip-hop", "R&B", "Rock", "Trot"];
+const MOOD_VALUES = ["", "Bright", "Calm", "Emotional", "Upbeat", "Epic", "Sad", "Dreamy"];
 
 function MusicPanel({ lab }: { lab: Lab }) {
   const { state, run, cancel } = useJobRunner(lab, "music");
-  const [prompt, setPrompt] = useState("잔잔한 카페에서 어울리는 따뜻한 어쿠스틱 음악");
-  const [genre, setGenre] = useState("자동");
-  const [mood, setMood] = useState("자동");
+  const [prompt, setPrompt] = useState(lab.t.musicDefault);
+  const [genre, setGenre] = useState(0);
+  const [mood, setMood] = useState(0);
   const [instrumental, setInstrumental] = useState(true);
   const [lyrics, setLyrics] = useState("");
   const [duration, setDuration] = useState(30);
@@ -1042,8 +1020,8 @@ function MusicPanel({ lab }: { lab: Lab }) {
     const f = new FormData();
     f.set("model", "ACE-Step v1.5 XL");
     f.set("prompt_ko", prompt);
-    if (genre !== "자동") f.set("genre", genre);
-    if (mood !== "자동") f.set("mood", mood);
+    if (genre > 0) f.set("genre", GENRE_VALUES[genre]);
+    if (mood > 0) f.set("mood", MOOD_VALUES[mood]);
     f.set("instrumental", instrumental ? "true" : "false");
     if (!instrumental && lyrics.trim()) f.set("lyrics", lyrics);
     f.set("duration_s", String(duration));
@@ -1058,27 +1036,31 @@ function MusicPanel({ lab }: { lab: Lab }) {
         onChange={(e) => setPrompt(e.target.value)}
         rows={3}
         className={inputCls}
-        placeholder="만들고 싶은 음악을 설명하세요 (분위기·장면·악기 등)"
+        placeholder={lab.t.musicPlaceholder}
       />
       <div className="flex flex-wrap items-center gap-3">
         <label className="text-xs text-paper-faint">
-          장르
-          <select value={genre} onChange={(e) => setGenre(e.target.value)} className={`${inputCls} mt-1 max-w-[150px]`}>
-            {MUSIC_GENRES.map((g) => (
-              <option key={g}>{g}</option>
+          {lab.t.genreLabel}
+          <select value={genre} onChange={(e) => setGenre(Number(e.target.value))} className={`${inputCls} mt-1 max-w-[150px]`}>
+            {lab.t.genres.map((g, i) => (
+              <option key={g} value={i}>
+                {g}
+              </option>
             ))}
           </select>
         </label>
         <label className="text-xs text-paper-faint">
-          분위기
-          <select value={mood} onChange={(e) => setMood(e.target.value)} className={`${inputCls} mt-1 max-w-[150px]`}>
-            {MUSIC_MOODS.map((m) => (
-              <option key={m}>{m}</option>
+          {lab.t.moodLabel}
+          <select value={mood} onChange={(e) => setMood(Number(e.target.value))} className={`${inputCls} mt-1 max-w-[150px]`}>
+            {lab.t.moods.map((m, i) => (
+              <option key={m} value={i}>
+                {m}
+              </option>
             ))}
           </select>
         </label>
         <label className="text-xs text-paper-faint">
-          길이
+          {lab.t.lengthLabel}
           <select
             value={duration}
             onChange={(e) => setDuration(Number(e.target.value))}
@@ -1086,7 +1068,7 @@ function MusicPanel({ lab }: { lab: Lab }) {
           >
             {[15, 30, 60].map((d) => (
               <option key={d} value={d}>
-                {d}초
+                {lab.t.secondsUnit.replace("{d}", String(d))}
               </option>
             ))}
           </select>
@@ -1100,7 +1082,7 @@ function MusicPanel({ lab }: { lab: Lab }) {
           onChange={(e) => setInstrumental(e.target.checked)}
           className="h-4 w-4 accent-lime"
         />
-        연주곡 (보컬 없음)
+        {lab.t.instrumental}
       </label>
       {!instrumental && (
         <textarea
@@ -1108,16 +1090,16 @@ function MusicPanel({ lab }: { lab: Lab }) {
           onChange={(e) => setLyrics(e.target.value)}
           rows={3}
           className={inputCls}
-          placeholder="가사 (선택) — 비워두면 분위기에 맞춰 자동 작사됩니다"
+          placeholder={lab.t.lyricsPlaceholder}
         />
       )}
 
       <CostButton service="music" lab={lab} onClick={submit} busy={busy}>
-        음악 생성
+        {lab.t.musicGen}
       </CostButton>
-      <GenerationProgress state={state} service="music" onCancel={cancel} />
-      <ResultCard key={state.phase === "done" ? state.jobId : "idle"} state={state} />
-      <ErrorLine state={state} />
+      <GenerationProgress state={state} service="music" t={lab.t} onCancel={cancel} />
+      <ResultCard key={state.phase === "done" ? state.jobId : "idle"} state={state} t={lab.t} />
+      <ErrorLine state={state} t={lab.t} />
     </div>
   );
 }
@@ -1131,11 +1113,7 @@ function Toasts({ toasts }: { toasts: Toast[] }) {
         <div
           key={t.id}
           className={`animate-pop pointer-events-auto flex items-start gap-2.5 border bg-ink p-4 shadow-lg ${
-            t.type === "success"
-              ? "border-lime/50"
-              : t.type === "error"
-                ? "border-red-500/50"
-                : "border-ink-line"
+            t.type === "success" ? "border-lime/50" : t.type === "error" ? "border-red-500/50" : "border-ink-line"
           }`}
         >
           <span
@@ -1154,7 +1132,7 @@ function Toasts({ toasts }: { toasts: Toast[] }) {
 
 /* ── 메인 ─────────────────────────────────────────────── */
 
-export default function TestLab() {
+export default function TestLab({ t, serviceLabels }: { t: LabT; serviceLabels: ServiceLabels }) {
   const [tab, setTab] = useState<TabId>("tts");
   const [me, setMe] = useState<Me | null | undefined>(undefined);
   const [balance, setBalance] = useState(0);
@@ -1164,7 +1142,7 @@ export default function TestLab() {
   const notify = useCallback((type: ToastType, msg: string) => {
     const id = Date.now() + Math.random();
     setToasts((list) => [...list, { id, type, msg }]);
-    setTimeout(() => setToasts((list) => list.filter((t) => t.id !== id)), 4200);
+    setTimeout(() => setToasts((list) => list.filter((x) => x.id !== id)), 4200);
   }, []);
 
   useEffect(() => {
@@ -1192,23 +1170,21 @@ export default function TestLab() {
   if (me === undefined)
     return (
       <p className="flex items-center gap-2 font-mono text-sm text-paper-faint">
-        <Spinner className="h-4 w-4" /> 불러오는 중…
+        <Spinner className="h-4 w-4" /> {t.loading}
       </p>
     );
 
   if (!me) {
     return (
       <div className="border border-ink-line bg-ink-soft p-10 text-center">
-        <p className="text-lg font-bold">로그인이 필요합니다</p>
-        <p className="mt-2 text-sm text-paper-dim">
-          회원가입하면 300 크레딧을 무료로 드립니다. 음성·이미지·영상·아바타를 직접 만들어 보세요.
-        </p>
+        <p className="text-lg font-bold">{t.loginRequired}</p>
+        <p className="mt-2 text-sm text-paper-dim">{t.gateLede.replace("{bonus}", "300")}</p>
         <div className="mt-6 flex justify-center gap-3">
           <Link href="/signup" className="bg-lime px-6 py-3 text-sm font-bold text-ink hover:bg-lime-deep">
-            회원가입 (300 크레딧)
+            {t.gateSignup.replace("{bonus}", "300")}
           </Link>
           <Link href="/login" className="border border-ink-line px-6 py-3 text-sm font-semibold text-paper-dim hover:border-lime">
-            로그인
+            {t.gateLogin}
           </Link>
         </div>
       </div>
@@ -1216,45 +1192,46 @@ export default function TestLab() {
   }
 
   const unlimited = me.unlimited === 1;
-  const lab: Lab = { unlimited, balance, setBalance, notify };
+  const lab: Lab = { unlimited, balance, setBalance, notify, t, serviceLabels };
 
   return (
     <div>
       {/* 잔액 바 */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border border-ink-line bg-ink-soft px-5 py-3">
         <p className="text-sm">
-          <span className="text-paper-faint">{me.name} 님 · </span>
+          <span className="text-paper-faint">{me.name}{t.userSuffix}</span>
           {unlimited ? (
-            <span className="font-bold text-lime">무제한 사용</span>
+            <span className="font-bold text-lime">{t.unlimitedUse}</span>
           ) : (
             <>
-              잔액 <span className="font-bold text-lime">{balance.toLocaleString()}</span> 크레딧
+              {t.balanceLead}
+              <span className="font-bold text-lime">{balance.toLocaleString()}</span> {t.creditsUnit}
             </>
           )}
         </p>
         <Link href="/account" className="font-mono text-[11px] tracking-[0.15em] text-paper-faint hover:text-lime">
-          사용 내역 · 충전 →
+          {t.usageLink}
         </Link>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-line">
         <div className="flex flex-wrap">
-          {TABS.map((t) => (
+          {TAB_IDS.map((id) => (
             <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
+              key={id}
+              onClick={() => setTab(id)}
               className={`border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${
-                tab === t.id ? "border-lime text-paper" : "border-transparent text-paper-faint hover:text-paper-dim"
+                tab === id ? "border-lime text-paper" : "border-transparent text-paper-faint hover:text-paper-dim"
               }`}
             >
-              {t.label}
-              <span className="ml-1.5 font-mono text-[10px] text-paper-faint">{CREDIT_COSTS[t.id]}CR</span>
+              {serviceLabels[id]}
+              <span className="ml-1.5 font-mono text-[10px] text-paper-faint">{CREDIT_COSTS[id]}CR</span>
             </button>
           ))}
         </div>
         <p className="flex items-center gap-1.5 font-mono text-[10px] tracking-[0.2em] text-paper-faint">
           <span className="live-dot h-1.5 w-1.5 rounded-full bg-lime" />
-          대기열 {queueDepth ?? "–"}
+          {t.queueLabel.replace("{n}", String(queueDepth ?? "–"))}
         </p>
       </div>
 
