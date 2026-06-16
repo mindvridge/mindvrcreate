@@ -366,7 +366,7 @@ const en: Dict = {
     lede: "Four adoption tracks designed from a direct analysis of thousands of founders' ideas. Tell us where your product fits and we'll build the demo in that shape.",
     tracks: [
       { code: "T1", title: "Human-like avatar · digital human", desc: "Digital-twin check-in calls, virtual IP & K-POP, AI persona interviewers, intake & care avatars, virtual try-on — services where a human face is the product.", offer: "Avatar + TTS + lip-sync + video, full stack" },
-      { code: "T2", title: "Give your conversational AI a face", desc: "Add an avatar layer to a text or voice chatbot to upgrade it into a “face-bearing AI” that builds trust and immersion.", offer: "Avatar layer over your chatbot" },
+      { code: "T2", title: "Give your conversational AI a face", desc: "Add an avatar layer to a text or voice chatbot to upgrade it into an “AI with a face” that builds trust and immersion.", offer: "Avatar layer over your chatbot" },
       { code: "T3", title: "Video content production", desc: "Shorts, promos, book trailers, local-business content. We handle high-volume production on schedule.", offer: "Video content production" },
       { code: "T4", title: "Images · ad creative", desc: "E-commerce detail pages, images with consistent brand style, high-volume ad creative.", offer: "Image production service" },
     ],
@@ -377,7 +377,7 @@ const en: Dict = {
     eyebrow: "Try it yourself",
     freeBadge: "300 free credits when you sign in",
     services: ["Voice (TTS)", "Chat (LLM)", "Image", "Video", "Avatar"],
-    title: { lead: "Voice, chat, image, video, avatar — ", em: "make it now", tail: ", yourself." },
+    title: { lead: "Voice, chat, image, video, avatar — ", em: "build them yourself", tail: ", right now." },
     lede: "See results, not explanations. The Test Lab is wired live to MindVR's generation studio, so you can build all five yourself. Sign up and get 300 credits free.",
     creditUnit: "credits / run",
     ctaOpen: "Open the Test Lab",
