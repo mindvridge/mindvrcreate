@@ -4,11 +4,12 @@ import AccountPanel from "@/components/account-panel";
 import Footer from "@/components/footer";
 import Header from "@/components/header";
 import { getCurrentUser } from "@/lib/auth";
+import { getDict } from "@/lib/i18n-server";
 
-export const metadata: Metadata = {
-  title: "내 계정 — 마인드브이알 MindVR",
-  robots: { index: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getDict();
+  return { title: t.appMeta.accountTitle, robots: { index: false } };
+}
 
 export default async function AccountPage() {
   const user = await getCurrentUser();

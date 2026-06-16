@@ -2,13 +2,16 @@ import type { Metadata } from "next";
 import AuthForm from "@/components/auth-form";
 import Footer from "@/components/footer";
 import Header from "@/components/header";
+import { SIGNUP_BONUS } from "@/lib/credits";
+import { getDict } from "@/lib/i18n-server";
 
-export const metadata: Metadata = {
-  title: "로그인 — 마인드브이알 MindVR",
-  robots: { index: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getDict();
+  return { title: t.appMeta.loginTitle, robots: { index: false } };
+}
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const t = await getDict();
   return (
     <>
       <Header />
@@ -17,8 +20,8 @@ export default function LoginPage() {
           <p className="font-mono text-xs tracking-[0.25em] text-paper-faint">
             <span className="text-lime">LOGIN</span>
           </p>
-          <h1 className="mt-6 mb-10 text-3xl font-extrabold tracking-tight">로그인</h1>
-          <AuthForm mode="login" />
+          <h1 className="mt-6 mb-10 text-3xl font-extrabold tracking-tight">{t.auth.loginHeading}</h1>
+          <AuthForm mode="login" t={t.auth} bonus={SIGNUP_BONUS} />
         </section>
       </main>
       <Footer />

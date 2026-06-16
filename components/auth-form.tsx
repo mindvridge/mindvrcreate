@@ -4,10 +4,35 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
 
+type AuthLabels = {
+  name: string;
+  namePlaceholder: string;
+  email: string;
+  password: string;
+  passwordPlaceholder: string;
+  processing: string;
+  signupSubmit: string;
+  loginSubmit: string;
+  genericError: string;
+  requestError: string;
+  haveAccount: string;
+  noAccount: string;
+  toLogin: string;
+  toSignup: string;
+};
+
 const inputCls =
   "w-full border-0 border-b border-ink-line bg-transparent px-1 py-3 text-sm text-paper placeholder:text-paper-faint focus:border-lime focus:outline-none transition-colors";
 
-export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
+export default function AuthForm({
+  mode,
+  t,
+  bonus,
+}: {
+  mode: "login" | "signup";
+  t: AuthLabels;
+  bonus: number;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +57,7 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
       });
       const json = await res.json();
       if (!res.ok) {
-        setError(json.error ?? "오류가 발생했습니다.");
+        setError(json.error ?? t.genericError);
         setBusy(false);
         return;
       }
@@ -40,7 +65,7 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
       router.push("/test");
       router.refresh();
     } catch {
-      setError("요청 중 오류가 발생했습니다.");
+      setError(t.requestError);
       setBusy(false);
     }
   };
@@ -49,12 +74,12 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
     <form onSubmit={handleSubmit} className="space-y-6">
       {isSignup && (
         <div>
-          <p className="font-mono text-[10px] tracking-[0.2em] text-paper-faint">이름</p>
-          <input name="name" required placeholder="홍길동" className={inputCls} autoComplete="name" />
+          <p className="font-mono text-[10px] tracking-[0.2em] text-paper-faint">{t.name}</p>
+          <input name="name" required placeholder={t.namePlaceholder} className={inputCls} autoComplete="name" />
         </div>
       )}
       <div>
-        <p className="font-mono text-[10px] tracking-[0.2em] text-paper-faint">이메일</p>
+        <p className="font-mono text-[10px] tracking-[0.2em] text-paper-faint">{t.email}</p>
         <input
           name="email"
           type="email"
@@ -65,13 +90,13 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
         />
       </div>
       <div>
-        <p className="font-mono text-[10px] tracking-[0.2em] text-paper-faint">비밀번호</p>
+        <p className="font-mono text-[10px] tracking-[0.2em] text-paper-faint">{t.password}</p>
         <input
           name="password"
           type="password"
           required
           minLength={8}
-          placeholder="8자 이상"
+          placeholder={t.passwordPlaceholder}
           className={inputCls}
           autoComplete={isSignup ? "new-password" : "current-password"}
         />
@@ -84,22 +109,26 @@ export default function AuthForm({ mode }: { mode: "login" | "signup" }) {
         disabled={busy}
         className="w-full bg-lime px-6 py-3.5 text-base font-bold text-ink transition-colors hover:bg-lime-deep disabled:opacity-50"
       >
-        {busy ? "처리 중…" : isSignup ? "가입하고 300 크레딧 받기" : "로그인"}
+        {busy
+          ? t.processing
+          : isSignup
+            ? t.signupSubmit.replace("{bonus}", String(bonus))
+            : t.loginSubmit}
       </button>
 
       <p className="text-center text-sm text-paper-faint">
         {isSignup ? (
           <>
-            이미 계정이 있으신가요?{" "}
+            {t.haveAccount}{" "}
             <Link href="/login" className="font-semibold text-lime">
-              로그인
+              {t.toLogin}
             </Link>
           </>
         ) : (
           <>
-            계정이 없으신가요?{" "}
+            {t.noAccount}{" "}
             <Link href="/signup" className="font-semibold text-lime">
-              회원가입
+              {t.toSignup}
             </Link>
           </>
         )}
