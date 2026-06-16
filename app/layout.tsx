@@ -1,19 +1,20 @@
 import type { Metadata } from "next";
-import { getLocale } from "@/lib/i18n-server";
+import { getDict, getLocale } from "@/lib/i18n-server";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "마인드브이알 MindVR — 한국어 특화 AI 아바타 스튜디오",
-  description:
-    "한국어로 자연스럽게 말하는, 당신만의 AI 휴먼을 합리적 비용에. 캐릭터·브랜드·페르소나 전용 디지털휴먼을 제작하는 스튜디오. 캐릭터 IP는 100% 고객 소유.",
-  openGraph: {
-    title: "마인드브이알 MindVR — 한국어 특화 AI 아바타 스튜디오",
-    description:
-      "한국어로 자연스럽게 말하는, 당신만의 AI 휴먼을 합리적 비용에. 테스트 랩에서 직접 만들어 보세요.",
-    locale: "ko_KR",
-    type: "website",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getDict();
+  return {
+    title: t.meta.homeTitle,
+    description: t.meta.homeDescription,
+    openGraph: {
+      title: t.meta.homeTitle,
+      description: t.meta.homeDescription,
+      locale: t.meta.ogLocale,
+      type: "website",
+    },
+  };
+}
 
 export default async function RootLayout({
   children,

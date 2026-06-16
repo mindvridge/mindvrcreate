@@ -46,6 +46,13 @@ export function pickFromAcceptLanguage(header: string | null | undefined): Local
 type EmText = { lead: string; em: string; tail: string };
 
 const ko = {
+  meta: {
+    homeTitle: "마인드브이알 MindVR — 한국어 특화 AI 아바타 스튜디오",
+    homeDescription: "한국어로 자연스럽게 말하는, 당신만의 AI 휴먼을 합리적 비용에. 테스트 랩에서 직접 만들어 보세요.",
+    brandTitle: "브랜드 소개 — 마인드브이알 MindVR",
+    brandDescription: "마인드브이알(MindVR)은 한국어에 특화된 AI 아바타 스튜디오입니다. 사람처럼 자연스럽게 한국어로 말하는 디지털휴먼을 자체 제작 역량으로 만듭니다.",
+    ogLocale: "ko_KR",
+  },
   nav: {
     brandTag: "마인드브이알",
     items: {
@@ -256,6 +263,13 @@ const ko = {
 export type Dict = typeof ko;
 
 const en: Dict = {
+  meta: {
+    homeTitle: "MindVR — Korean-specialized AI avatar studio",
+    homeDescription: "Your own AI human that speaks natural Korean, at a fair price. Build one yourself in the Test Lab.",
+    brandTitle: "About — MindVR",
+    brandDescription: "MindVR is a Korean-specialized AI avatar studio. We build digital humans that speak Korean as naturally as a person, with our own production capability.",
+    ogLocale: "en_US",
+  },
   nav: {
     brandTag: "AI Human Studio",
     items: {
@@ -464,6 +478,13 @@ const en: Dict = {
 };
 
 const zh: Dict = {
+  meta: {
+    homeTitle: "MindVR — 专注韩语的 AI 虚拟形象工作室",
+    homeDescription: "会自然说韩语的、专属你的 AI 数字人，价格合理。在体验实验室亲自制作。",
+    brandTitle: "品牌介绍 — MindVR",
+    brandDescription: "迈恩德VR（MindVR）是专注韩语的 AI 虚拟形象工作室。以自研制作能力，打造像真人一样自然说韩语的数字人。",
+    ogLocale: "zh_CN",
+  },
   nav: {
     brandTag: "AI 数字人工作室",
     items: {

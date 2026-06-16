@@ -7,11 +7,10 @@ import Reveal from "@/components/reveal";
 import SectionHeader from "@/components/section-header";
 import { getDict } from "@/lib/i18n-server";
 
-export const metadata: Metadata = {
-  title: "브랜드 소개 — 마인드브이알 MindVR",
-  description:
-    "마인드브이알(MindVR)은 한국어에 특화된 AI 아바타 스튜디오입니다. 사람처럼 자연스럽게 한국어로 말하는 디지털휴먼을 자체 제작 역량으로 만듭니다.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getDict();
+  return { title: t.meta.brandTitle, description: t.meta.brandDescription };
+}
 
 const PRODUCT_URLS = ["https://mindvridge.com/", "http://mindprep.co.kr/", "https://mindvr.co.kr/meditation"];
 

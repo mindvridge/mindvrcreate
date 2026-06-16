@@ -49,7 +49,7 @@ export default function PersonaCard({
     >
       <img
         src={img}
-        alt={`AI 생성 가상 인물 — ${label}`}
+        alt={`${aiLabel} — ${label}`}
         className={`h-full w-full object-cover ${playing ? "opacity-0" : "opacity-100"}`}
       />
       {videoSrc && (
