@@ -32,7 +32,7 @@ export default async function AdminPage() {
           <h1 className="mt-8 text-3xl font-extrabold tracking-tight">{t.adminPage.heading}</h1>
           <p className="mt-3 text-sm text-paper-dim">{t.adminPage.lede}</p>
           <div className="mt-10">
-            <AdminDashboard />
+            <AdminDashboard t={t.admin} serviceLabels={t.serviceLabels} />
           </div>
         </section>
       </main>

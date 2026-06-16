@@ -13,16 +13,39 @@ type Coupon = {
   created_at: string;
 };
 
-function fmtDate(iso: string | null): string {
-  if (!iso) return "무기한";
-  const d = new Date(iso);
-  return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
-}
+export type CouponsT = {
+  title: string;
+  codeLabel: string;
+  creditsLabel: string;
+  maxLabel: string;
+  expiresLabel: string;
+  noteLabel: string;
+  notePlaceholder: string;
+  createBtn: string;
+  createFail: string;
+  thCode: string;
+  thCredits: string;
+  thUses: string;
+  thExpiry: string;
+  thStatus: string;
+  thManage: string;
+  active: string;
+  expired: string;
+  exhausted: string;
+  stopped: string;
+  expiredTitle: string;
+  exhaustedTitle: string;
+  stoppedTitle: string;
+  deleteBtn: string;
+  deleteConfirm: string;
+  noCoupons: string;
+  noExpiry: string;
+};
 
 const inputCls =
   "w-full border border-ink-line bg-ink px-3 py-2.5 text-sm text-paper placeholder:text-paper-faint focus:border-lime focus:outline-none";
 
-export default function AdminCoupons() {
+export default function AdminCoupons({ t }: { t: CouponsT }) {
   const [now] = useState(() => Date.now());
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [code, setCode] = useState("");
@@ -32,6 +55,12 @@ export default function AdminCoupons() {
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const fmtDate = (iso: string | null): string => {
+    if (!iso) return t.noExpiry;
+    const d = new Date(iso);
+    return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+  };
 
   const load = useCallback(
     () =>
@@ -63,7 +92,7 @@ export default function AdminCoupons() {
     const json = await res.json();
     setBusy(false);
     if (!res.ok) {
-      setError(json.error ?? "생성 실패");
+      setError(json.error ?? t.createFail);
       return;
     }
     setCode("");
@@ -84,7 +113,7 @@ export default function AdminCoupons() {
   };
 
   const remove = async (c: Coupon) => {
-    if (!confirm(`쿠폰 ${c.code} 을(를) 삭제할까요? (지급 이력은 유지됩니다)`)) return;
+    if (!confirm(t.deleteConfirm.replace("{code}", c.code))) return;
     await fetch(`/api/admin/coupons/${encodeURIComponent(c.code)}`, { method: "DELETE" });
     await load();
   };
@@ -92,7 +121,7 @@ export default function AdminCoupons() {
   return (
     <section>
       <h2 className="mb-4 font-mono text-xs tracking-[0.2em] text-paper-faint">
-        COUPONS · 쿠폰 {coupons.length}개
+        {t.title.replace("{n}", String(coupons.length))}
       </h2>
 
       {/* 생성 폼 */}
@@ -101,11 +130,11 @@ export default function AdminCoupons() {
         className="grid gap-3 border border-ink-line bg-ink-soft p-5 sm:grid-cols-2 lg:grid-cols-6 lg:items-end"
       >
         <div className="lg:col-span-1">
-          <p className="mb-1 font-mono text-[10px] tracking-[0.15em] text-paper-faint">코드(빈칸=자동)</p>
+          <p className="mb-1 font-mono text-[10px] tracking-[0.15em] text-paper-faint">{t.codeLabel}</p>
           <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="WELCOME50" className={inputCls} />
         </div>
         <div>
-          <p className="mb-1 font-mono text-[10px] tracking-[0.15em] text-paper-faint">지급 크레딧 *</p>
+          <p className="mb-1 font-mono text-[10px] tracking-[0.15em] text-paper-faint">{t.creditsLabel}</p>
           <input
             value={credits}
             onChange={(e) => setCredits(e.target.value)}
@@ -117,23 +146,23 @@ export default function AdminCoupons() {
           />
         </div>
         <div>
-          <p className="mb-1 font-mono text-[10px] tracking-[0.15em] text-paper-faint">최대 사용(빈칸=무제한)</p>
+          <p className="mb-1 font-mono text-[10px] tracking-[0.15em] text-paper-faint">{t.maxLabel}</p>
           <input value={maxRed} onChange={(e) => setMaxRed(e.target.value)} type="number" min={1} placeholder="100" className={inputCls} />
         </div>
         <div>
-          <p className="mb-1 font-mono text-[10px] tracking-[0.15em] text-paper-faint">만료일(선택)</p>
+          <p className="mb-1 font-mono text-[10px] tracking-[0.15em] text-paper-faint">{t.expiresLabel}</p>
           <input value={expires} onChange={(e) => setExpires(e.target.value)} type="date" className={inputCls} />
         </div>
         <div>
-          <p className="mb-1 font-mono text-[10px] tracking-[0.15em] text-paper-faint">메모(선택)</p>
-          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="신규 가입 프로모션" className={inputCls} />
+          <p className="mb-1 font-mono text-[10px] tracking-[0.15em] text-paper-faint">{t.noteLabel}</p>
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t.notePlaceholder} className={inputCls} />
         </div>
         <button
           type="submit"
           disabled={busy}
           className="bg-lime px-5 py-2.5 text-sm font-bold text-ink transition-colors hover:bg-lime-deep disabled:opacity-50"
         >
-          쿠폰 생성
+          {t.createBtn}
         </button>
       </form>
       {error && <p className="mt-2 text-sm font-semibold text-red-600">{error}</p>}
@@ -143,12 +172,12 @@ export default function AdminCoupons() {
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead>
             <tr className="border-b border-ink-line bg-ink-soft font-mono text-[11px] uppercase tracking-[0.15em] text-paper-faint">
-              <th className="px-4 py-3 font-medium">코드</th>
-              <th className="px-4 py-3 font-medium">크레딧</th>
-              <th className="px-4 py-3 font-medium">사용/한도</th>
-              <th className="px-4 py-3 font-medium">만료</th>
-              <th className="px-4 py-3 font-medium">상태</th>
-              <th className="px-4 py-3 font-medium">관리</th>
+              <th className="px-4 py-3 font-medium">{t.thCode}</th>
+              <th className="px-4 py-3 font-medium">{t.thCredits}</th>
+              <th className="px-4 py-3 font-medium">{t.thUses}</th>
+              <th className="px-4 py-3 font-medium">{t.thExpiry}</th>
+              <th className="px-4 py-3 font-medium">{t.thStatus}</th>
+              <th className="px-4 py-3 font-medium">{t.thManage}</th>
             </tr>
           </thead>
           <tbody>
@@ -169,21 +198,21 @@ export default function AdminCoupons() {
                   <td className="px-4 py-3">
                     {c.active && !expired && !exhausted ? (
                       <button onClick={() => toggle(c)} className="bg-lime px-2.5 py-1 text-xs font-semibold text-ink">
-                        활성
+                        {t.active}
                       </button>
                     ) : (
                       <button
                         onClick={() => toggle(c)}
                         className="border border-ink-line px-2.5 py-1 text-xs font-semibold text-paper-faint hover:border-lime"
-                        title={expired ? "만료됨" : exhausted ? "소진됨" : "중지됨"}
+                        title={expired ? t.expiredTitle : exhausted ? t.exhaustedTitle : t.stoppedTitle}
                       >
-                        {expired ? "만료" : exhausted ? "소진" : "중지"}
+                        {expired ? t.expired : exhausted ? t.exhausted : t.stopped}
                       </button>
                     )}
                   </td>
                   <td className="px-4 py-3">
                     <button onClick={() => remove(c)} className="text-xs text-paper-faint hover:text-red-600">
-                      삭제
+                      {t.deleteBtn}
                     </button>
                   </td>
                 </tr>
@@ -192,7 +221,7 @@ export default function AdminCoupons() {
             {coupons.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-sm text-paper-faint">
-                  생성된 쿠폰이 없습니다.
+                  {t.noCoupons}
                 </td>
               </tr>
             )}
