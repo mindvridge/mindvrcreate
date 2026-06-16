@@ -14,6 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function AccountPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  const t = await getDict();
 
   return (
     <>
@@ -32,6 +33,9 @@ export default async function AccountPage() {
             unlimited={user.unlimited === 1}
             name={user.name}
             email={user.email}
+            t={t.accountPanel}
+            serviceLabels={t.serviceLabels}
+            packNames={t.packNames}
           />
         </section>
       </main>
