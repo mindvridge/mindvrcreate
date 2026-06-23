@@ -5,3 +5,5 @@
  */
 export const SIGNUP_ENABLED = false;
 export const TEST_LAB_ENABLED = false;
+/** 로그인 버튼 노출 여부. false라도 /login 라우트는 살아 있어(관리자 직접 접속) 로그인은 가능. */
+export const LOGIN_ENABLED = false;

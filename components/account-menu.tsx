@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { SIGNUP_ENABLED, TEST_LAB_ENABLED } from "@/lib/features";
+import { LOGIN_ENABLED, SIGNUP_ENABLED, TEST_LAB_ENABLED } from "@/lib/features";
 
 type Me = {
   id: string;
@@ -55,10 +55,12 @@ export default function AccountMenu({
     router.refresh();
   };
 
-  if (me === undefined) return <span className="h-9 w-20" />;
+  if (me === undefined) return LOGIN_ENABLED || SIGNUP_ENABLED ? <span className="h-9 w-20" /> : null;
 
   if (!me) {
-    // 회원가입 비활성화 시: 로그인만 노출(기존 사용자·관리자용)
+    // 로그인·회원가입 모두 비활성화 → 계정 진입점 없음(관리자는 /login 직접 접속)
+    if (!LOGIN_ENABLED && !SIGNUP_ENABLED) return null;
+    // 회원가입만 비활성화 → 로그인만 노출
     if (!SIGNUP_ENABLED) {
       return (
         <Link
@@ -71,9 +73,11 @@ export default function AccountMenu({
     }
     return (
       <div className="flex items-center gap-3">
-        <Link href="/login" className="hidden text-sm text-paper-dim hover:text-lime sm:inline">
-          {loginLabel}
-        </Link>
+        {LOGIN_ENABLED && (
+          <Link href="/login" className="hidden text-sm text-paper-dim hover:text-lime sm:inline">
+            {loginLabel}
+          </Link>
+        )}
         <Link
           href="/signup"
           className="bg-lime px-4 py-2 text-sm font-bold text-ink transition-colors hover:bg-lime-deep"
