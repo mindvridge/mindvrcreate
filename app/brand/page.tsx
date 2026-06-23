@@ -5,6 +5,7 @@ import Footer from "@/components/footer";
 import Header from "@/components/header";
 import Reveal from "@/components/reveal";
 import SectionHeader from "@/components/section-header";
+import { TEST_LAB_ENABLED } from "@/lib/features";
 import { getDict } from "@/lib/i18n-server";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -136,7 +137,7 @@ export default async function BrandPage() {
             <h2 className="text-3xl font-extrabold leading-snug tracking-tight sm:text-4xl">{b.ctaTitle}</h2>
             <p className="mx-auto mt-5 max-w-xl leading-relaxed text-paper-dim">{b.ctaLede}</p>
             <div className="mt-8 flex flex-wrap justify-center gap-4">
-              <Link href="/test" className="bg-lime px-6 py-3.5 text-base font-bold text-ink transition-colors hover:bg-lime-deep">
+              <Link href={TEST_LAB_ENABLED ? "/test" : "/avatar"} className="bg-lime px-6 py-3.5 text-base font-bold text-ink transition-colors hover:bg-lime-deep">
                 {b.ctaButton}
               </Link>
             </div>

@@ -5,6 +5,7 @@ import Header from "@/components/header";
 import Hero from "@/components/hero";
 import LabCta from "@/components/lab-cta";
 import Pricing from "@/components/pricing";
+import { TEST_LAB_ENABLED } from "@/lib/features";
 import Problem from "@/components/problem";
 import Process from "@/components/process";
 import RealtimeAvatar from "@/components/realtime-avatar";
@@ -26,7 +27,7 @@ export default function Home() {
         <Problem />
         <Values />
         <Segments />
-        <LabCta />
+        {TEST_LAB_ENABLED && <LabCta />}
         <Process />
         <Pricing />
         <TrustDetail />

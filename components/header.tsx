@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TEST_LAB_ENABLED } from "@/lib/features";
 import { getDict, getLocale } from "@/lib/i18n-server";
 import AccountMenu from "./account-menu";
 import LangSwitcher from "./lang-switcher";
@@ -12,7 +13,10 @@ export default async function Header() {
     { href: "/#usecases", label: t.nav.items.usecases },
     { href: "/#demos", label: t.nav.items.demos },
     { href: "/#pricing", label: t.nav.items.pricing },
-    { href: "/test", label: t.nav.items.lab },
+    // 테스트 랩 비활성화 → '아바타'(개발 예정) 탭으로 교체
+    TEST_LAB_ENABLED
+      ? { href: "/test", label: t.nav.items.lab }
+      : { href: "/avatar", label: t.nav.items.avatar },
   ];
 
   return (

@@ -48,7 +48,7 @@ type EmText = { lead: string; em: string; tail: string };
 const ko = {
   meta: {
     homeTitle: "마인드브이알 MindVR — 한국어 특화 AI 아바타 스튜디오",
-    homeDescription: "한국어로 자연스럽게 말하는, 당신만의 AI 휴먼을 합리적 비용에. 테스트 랩에서 직접 만들어 보세요.",
+    homeDescription: "한국어로 자연스럽게 말하는, 당신만의 AI 휴먼을 합리적 비용에. 캐릭터·브랜드·페르소나 전용 디지털휴먼 스튜디오.",
     brandTitle: "브랜드 소개 — 마인드브이알 MindVR",
     brandDescription: "마인드브이알(MindVR)은 한국어에 특화된 AI 아바타 스튜디오입니다. 사람처럼 자연스럽게 한국어로 말하는 디지털휴먼을 자체 제작 역량으로 만듭니다.",
     ogLocale: "ko_KR",
@@ -60,6 +60,7 @@ const ko = {
     adminTitle: "관리자 — 마인드브이알 MindVR",
     loginTitle: "로그인 — 마인드브이알 MindVR",
     signupTitle: "회원가입 — 마인드브이알 MindVR",
+    avatarTitle: "아바타 — 마인드브이알 MindVR",
   },
   testPage: {
     heading: "직접 만들어 보세요.",
@@ -87,6 +88,14 @@ const ko = {
     noAccount: "계정이 없으신가요?",
     toLogin: "로그인",
     toSignup: "회원가입",
+  },
+  avatarPage: {
+    eyebrow: "준비 중",
+    title: "AI 아바타 스튜디오",
+    lede: "새로운 아바타 콘텐츠를 준비하고 있습니다. 곧 더 풍부한 기능으로 찾아뵙겠습니다. 도입이나 협업이 필요하시면 언제든 문의해 주세요.",
+    comingSoon: "COMING SOON",
+    contact: "도입 문의하기",
+    backHome: "홈으로 돌아가기",
   },
   serviceLabels: { llm: "대화 (LLM)", tts: "음성 (TTS)", image: "이미지 생성", video: "영상 생성", avatar: "아바타", music: "음악 생성" },
   packNames: { starter: "스타터", basic: "베이직", pro: "프로" },
@@ -246,6 +255,7 @@ const ko = {
       demos: "데모",
       pricing: "가격",
       lab: "테스트 랩",
+      avatar: "아바타",
     },
     login: "로그인",
     signup: "회원가입",
@@ -439,8 +449,8 @@ const ko = {
       { label: "OPERATION", value: "상담·훈련 서비스 운영" },
     ],
     ctaTitle: "직접 만들어 보세요.",
-    ctaLede: "테스트 랩에서 음성·대화·이미지·영상·아바타를 바로 만들어 볼 수 있습니다. 회원가입하면 300 크레딧을 무료로 드립니다.",
-    ctaButton: "테스트 랩 열기",
+    ctaLede: "마인드브이알의 AI 휴먼·디지털휴먼을 직접 확인해 보세요. 도입·협업 문의는 언제든 환영합니다.",
+    ctaButton: "아바타 스튜디오 보기",
   },
 };
 
@@ -449,7 +459,7 @@ export type Dict = typeof ko;
 const en: Dict = {
   meta: {
     homeTitle: "MindVR — Korean-specialized AI avatar studio",
-    homeDescription: "Your own AI human that speaks natural Korean, at a fair price. Build one yourself in the Test Lab.",
+    homeDescription: "Your own AI human that speaks natural Korean, at a fair price. A studio for digital humans dedicated to your character, brand, or persona.",
     brandTitle: "About — MindVR",
     brandDescription: "MindVR is a Korean-specialized AI avatar studio. We build digital humans that speak Korean as naturally as a person, with our own production capability.",
     ogLocale: "en_US",
@@ -461,6 +471,7 @@ const en: Dict = {
     adminTitle: "Admin — MindVR",
     loginTitle: "Log in — MindVR",
     signupTitle: "Sign up — MindVR",
+    avatarTitle: "Avatar — MindVR",
   },
   testPage: {
     heading: "Make it yourself.",
@@ -488,6 +499,14 @@ const en: Dict = {
     noAccount: "Don't have an account?",
     toLogin: "Log in",
     toSignup: "Sign up",
+  },
+  avatarPage: {
+    eyebrow: "In preparation",
+    title: "AI Avatar Studio",
+    lede: "We're preparing new avatar content — richer features are coming soon. For adoption or partnership, reach out anytime.",
+    comingSoon: "COMING SOON",
+    contact: "Get in touch",
+    backHome: "Back to home",
   },
   serviceLabels: { llm: "Chat (LLM)", tts: "Voice (TTS)", image: "Image", video: "Video", avatar: "Avatar", music: "Music" },
   packNames: { starter: "Starter", basic: "Basic", pro: "Pro" },
@@ -647,6 +666,7 @@ const en: Dict = {
       demos: "Demos",
       pricing: "Pricing",
       lab: "Test Lab",
+      avatar: "Avatar",
     },
     login: "Log in",
     signup: "Sign up",
@@ -840,15 +860,15 @@ const en: Dict = {
       { label: "OPERATION", value: "Counseling & training services" },
     ],
     ctaTitle: "Build it yourself.",
-    ctaLede: "In the Test Lab you can make voice, chat, image, video, and avatar right away. Sign up and get 300 credits free.",
-    ctaButton: "Open the Test Lab",
+    ctaLede: "See MindVR's AI humans and digital humans for yourself. We welcome adoption and partnership inquiries anytime.",
+    ctaButton: "View the Avatar Studio",
   },
 };
 
 const zh: Dict = {
   meta: {
     homeTitle: "MindVR — 专注韩语的 AI 虚拟形象工作室",
-    homeDescription: "会自然说韩语的、专属你的 AI 数字人，价格合理。在体验实验室亲自制作。",
+    homeDescription: "会自然说韩语的、专属你的 AI 数字人，价格合理。为你的角色、品牌或人设打造数字人的工作室。",
     brandTitle: "品牌介绍 — MindVR",
     brandDescription: "MindVR是专注韩语的 AI 虚拟形象工作室。以自研制作能力，打造像真人一样自然说韩语的数字人。",
     ogLocale: "zh_CN",
@@ -860,6 +880,7 @@ const zh: Dict = {
     adminTitle: "管理员 — MindVR",
     loginTitle: "登录 — MindVR",
     signupTitle: "注册 — MindVR",
+    avatarTitle: "数字人 — MindVR",
   },
   testPage: {
     heading: "亲自做做看。",
@@ -887,6 +908,14 @@ const zh: Dict = {
     noAccount: "还没有账户？",
     toLogin: "登录",
     toSignup: "注册",
+  },
+  avatarPage: {
+    eyebrow: "筹备中",
+    title: "AI 数字人工作室",
+    lede: "我们正在筹备全新的数字人内容，更丰富的功能即将上线。如需引入或合作，欢迎随时联系。",
+    comingSoon: "COMING SOON",
+    contact: "联系咨询",
+    backHome: "返回首页",
   },
   serviceLabels: { llm: "对话 (LLM)", tts: "语音 (TTS)", image: "图像生成", video: "视频生成", avatar: "数字人", music: "音乐生成" },
   packNames: { starter: "入门", basic: "基础", pro: "专业" },
@@ -1046,6 +1075,7 @@ const zh: Dict = {
       demos: "演示",
       pricing: "价格",
       lab: "体验实验室",
+      avatar: "数字人",
     },
     login: "登录",
     signup: "注册",
@@ -1239,8 +1269,8 @@ const zh: Dict = {
       { label: "OPERATION", value: "运营咨询·训练服务" },
     ],
     ctaTitle: "亲自做做看。",
-    ctaLede: "在体验实验室可立即制作语音、对话、图像、视频与数字人。注册即免费获得 300 积分。",
-    ctaButton: "打开体验实验室",
+    ctaLede: "亲自了解 MindVR 的 AI 数字人。欢迎随时咨询引入与合作。",
+    ctaButton: "查看数字人工作室",
   },
 };
 

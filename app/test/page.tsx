@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import Footer from "@/components/footer";
 import Header from "@/components/header";
 import TestLab from "@/components/test-lab";
+import { TEST_LAB_ENABLED } from "@/lib/features";
 import { getDict } from "@/lib/i18n-server";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -14,6 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function TestPage() {
+  if (!TEST_LAB_ENABLED) redirect("/avatar"); // 테스트 랩 비활성화 → 아바타(개발 예정)
   const t = await getDict();
   return (
     <>

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import AuthForm from "@/components/auth-form";
 import Footer from "@/components/footer";
 import Header from "@/components/header";
 import { SIGNUP_BONUS } from "@/lib/credits";
+import { SIGNUP_ENABLED } from "@/lib/features";
 import { getDict } from "@/lib/i18n-server";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -11,6 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function SignupPage() {
+  if (!SIGNUP_ENABLED) redirect("/login"); // 회원가입 비활성화
   const t = await getDict();
   return (
     <>

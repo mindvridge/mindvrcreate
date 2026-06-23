@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { SIGNUP_ENABLED, TEST_LAB_ENABLED } from "@/lib/features";
 
 type Me = {
   id: string;
@@ -57,6 +58,17 @@ export default function AccountMenu({
   if (me === undefined) return <span className="h-9 w-20" />;
 
   if (!me) {
+    // 회원가입 비활성화 시: 로그인만 노출(기존 사용자·관리자용)
+    if (!SIGNUP_ENABLED) {
+      return (
+        <Link
+          href="/login"
+          className="border border-ink-line px-4 py-2 text-sm font-semibold text-paper-dim transition-colors hover:border-lime hover:text-lime"
+        >
+          {loginLabel}
+        </Link>
+      );
+    }
     return (
       <div className="flex items-center gap-3">
         <Link href="/login" className="hidden text-sm text-paper-dim hover:text-lime sm:inline">
@@ -96,9 +108,11 @@ export default function AccountMenu({
                 {me.unlimited ? t.unlimitedUse : `${me.credits.toLocaleString()} ${t.creditsSuffix}`}
               </p>
             </div>
-            <Link href="/test" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-sm hover:bg-ink-soft">
-              {t.lab}
-            </Link>
+            {TEST_LAB_ENABLED && (
+              <Link href="/test" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-sm hover:bg-ink-soft">
+                {t.lab}
+              </Link>
+            )}
             <Link href="/account" onClick={() => setOpen(false)} className="block px-4 py-2.5 text-sm hover:bg-ink-soft">
               {t.account}
             </Link>
